@@ -233,6 +233,93 @@ namespace Chess {
 			}
 		}
 
+		private void GenerateKnightMove(int squareIndex) {
+			int file = GetFile(squareIndex);
+			int rank = GetRank(squareIndex);
+			var color = pieces[squareIndex].Color;
+
+			if (file > 1 && rank > 0) {
+				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.SouthWest) * 2 + GetSquareOffset(Direction.North);
+				var targetPiece = pieces[targetSquareIndex];
+				if (targetPiece.Color != color) {
+					lock (moves) {
+						moves.Add(new Move(squareIndex, targetSquareIndex));
+					}
+				}
+			}
+
+			if (file > 0 && rank > 1) {
+				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.SouthWest) * 2 + GetSquareOffset(Direction.East);
+				var targetPiece = pieces[targetSquareIndex];
+				if (targetPiece.Color != color) {
+					lock (moves) {
+						moves.Add(new Move(squareIndex, targetSquareIndex));
+					}
+				}
+			}
+
+			if (file > 0 && rank < 6) {
+				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.NorthWest) * 2 + GetSquareOffset(Direction.East);
+				var targetPiece = pieces[targetSquareIndex];
+				if (targetPiece.Color != color) {
+					lock (moves) {
+						moves.Add(new Move(squareIndex, targetSquareIndex));
+					}
+				}
+			}
+
+			if (file > 1 && rank < 7) {
+				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.NorthWest) * 2 + GetSquareOffset(Direction.South);
+				var targetPiece = pieces[targetSquareIndex];
+				if (targetPiece.Color != color) {
+					lock (moves) {
+						moves.Add(new Move(squareIndex, targetSquareIndex));
+					}
+				}
+			}
+
+			if (file < 7 && rank < 6) {
+				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.NorthEast) * 2 + GetSquareOffset(Direction.West);
+				var targetPiece = pieces[targetSquareIndex];
+				if (targetPiece.Color != color) {
+					lock (moves) {
+						moves.Add(new Move(squareIndex, targetSquareIndex));
+					}
+				}
+			}
+
+			if (file < 6 && rank < 7) {
+				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.NorthEast) * 2 + GetSquareOffset(Direction.South);
+				var targetPiece = pieces[targetSquareIndex];
+				if (targetPiece.Color != color) {
+					lock (moves) {
+						moves.Add(new Move(squareIndex, targetSquareIndex));
+					}
+				}
+			}
+
+			if (file < 6 && rank > 0) {
+				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.SouthEast) * 2 + GetSquareOffset(Direction.North);
+				var targetPiece = pieces[targetSquareIndex];
+				if (targetPiece.Color != color) {
+					lock (moves) {
+						moves.Add(new Move(squareIndex, targetSquareIndex));
+					}
+				}
+
+			}
+
+			if (file < 7 && rank > 1) {
+				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.SouthEast) * 2 + GetSquareOffset(Direction.West);
+				var targetPiece = pieces[targetSquareIndex];
+				if (targetPiece.Color != color) {
+					lock (moves) {
+						moves.Add(new Move(squareIndex, targetSquareIndex));
+					}
+				}
+			}
+		}
+
 		private void GenerateMove(int squareIndex) {
 			var piece = pieces[squareIndex];
 
@@ -242,6 +329,8 @@ namespace Chess {
 				var type = piece.Type;
 				if (type == Piece.Types.Pawn) {
 					GeneratePawnMove(squareIndex);
+				} else if (type == Piece.Types.Knight) {
+					GenerateKnightMove(squareIndex);
 				}
 			}
 		}
