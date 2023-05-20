@@ -320,6 +320,25 @@ namespace Chess {
 			}
 		}
 
+		private void GenerateKingMove(int squareIndex) {
+			var color = pieces[squareIndex].Color;
+
+			for (int directionIndex = 0; directionIndex < 8; directionIndex++) {
+				if (squaresToEdgeCount[squareIndex][directionIndex] == 0)
+					continue;
+
+				int targetSquareIndex = squareIndex + squareDirectionOffsets[directionIndex];
+				var targetPiece = pieces[targetSquareIndex];
+
+				if (targetPiece.Color == color)
+					continue;
+
+				lock (moves) {
+					moves.Add(new Move(squareIndex, targetSquareIndex));
+				}
+			}
+		}
+
 		private void GenerateMove(int squareIndex) {
 			var piece = pieces[squareIndex];
 
@@ -331,6 +350,8 @@ namespace Chess {
 					GeneratePawnMove(squareIndex);
 				} else if (type == Piece.Types.Knight) {
 					GenerateKnightMove(squareIndex);
+				} else if (type == Piece.Types.King) {
+					GenerateKingMove(squareIndex);
 				}
 			}
 		}
