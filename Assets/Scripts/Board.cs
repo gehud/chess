@@ -55,8 +55,17 @@ namespace Chess {
 
 		private int kingSquareIndex = -1;
 		private int twoSquarePawn = -1;
+		private bool isBlackKingCastlingAvaible = true;
+		private bool isBlackQueenCastlingAvaible = true;
+		private bool isWhiteKingCastlingAvaible = true;
+		private bool isWhiteQueenCastlingAvaible = true;
+		private bool undoIsBlackKingCastlingAvaible = true;
+		private bool undoIsBlackQueenCastlingAvaible = true;
+		private bool undoIsWhiteKingCastlingAvaible = true;
+		private bool undoIsWhiteQueenCastlingAvaible = true;
 		private bool isKingSelected = false;
 		private Piece undoPiece = Piece.Empty;
+		private Move castlingRookMove;
 		private int undoKingSquareIndex = -1;
 		private Move lastMove;
 
@@ -342,6 +351,74 @@ namespace Chess {
 				isKingSelected = true;
 			}
 
+			// Castling
+			if (color == Piece.Colors.White) {
+				if (isWhiteKingCastlingAvaible) {
+					bool isWhiteKingCastlingPossigle = true;
+					for (int i = 1; i <= 2; i++) {
+						if (!pieces[squareIndex + GetSquareOffset(Directions.East) * i].IsEmpty) {
+							isWhiteKingCastlingPossigle = false;
+							break;
+						}
+					}
+
+					if (isWhiteKingCastlingPossigle) {
+						lock (moves) {
+							moves.Add(new Move(squareIndex, squareIndex + GetSquareOffset(Directions.East) * 2));
+						}
+					}
+				}
+
+				if (isWhiteQueenCastlingAvaible) {
+					bool isWhiteQueenCastlingPossigle = true;
+					for (int i = 1; i <= 3; i++) {
+						if (!pieces[squareIndex + GetSquareOffset(Directions.West) * i].IsEmpty) {
+							isWhiteQueenCastlingPossigle = false;
+							break;
+						}
+					}
+
+					if (isWhiteQueenCastlingPossigle) {
+						lock (moves) {
+							moves.Add(new Move(squareIndex, squareIndex + GetSquareOffset(Directions.West) * 2));
+						}
+					}
+				}
+			} else {
+				if (isBlackKingCastlingAvaible) {
+					bool isBlackKingCastlingPossigle = true;
+					for (int i = 1; i <= 2; i++) {
+						if (!pieces[squareIndex + GetSquareOffset(Directions.East) * i].IsEmpty) {
+							isBlackKingCastlingPossigle = false;
+							break;
+						}
+					}
+
+					if (isBlackKingCastlingPossigle) {
+						lock (moves) {
+							moves.Add(new Move(squareIndex, squareIndex + GetSquareOffset(Directions.East) * 2));
+						}
+					}
+				}
+
+
+				if (isBlackQueenCastlingAvaible) {
+					bool isBlackQueenCastlingPossigle = true;
+					for (int i = 1; i <= 3; i++) {
+						if (!pieces[squareIndex + GetSquareOffset(Directions.West) * i].IsEmpty) {
+							isBlackQueenCastlingPossigle = false;
+							break;
+						}
+					}
+
+					if (isBlackQueenCastlingPossigle) {
+						lock (moves) {
+							moves.Add(new Move(squareIndex, squareIndex + GetSquareOffset(Directions.West) * 2));
+						}
+					}
+				}
+			}
+
 			for (int directionIndex = 0; directionIndex < 8; directionIndex++) {
 				if (moveLimits[squareIndex][directionIndex] == 0)
 					continue;
@@ -436,8 +513,53 @@ namespace Chess {
 		#endregion
 
 		private void MakeMove(Move move) {
-			if (pieces[move.From].Type == Piece.Types.King) {
+			var piece = pieces[move.From];
+			if (piece.Type == Piece.Types.King) {
 				kingSquareIndex = move.To;
+				bool isWhite = piece.Color == Piece.Colors.White;
+				bool isKingCastling = move.To == move.From + GetSquareOffset(Directions.East) * 2;
+				bool isQueenCastling = move.To == move.From + GetSquareOffset(Directions.West) * 2;
+				if (isKingCastling) {
+					if (isWhite && isWhiteKingCastlingAvaible || !isWhite && isBlackKingCastlingAvaible) {
+						Move rookMove = new Move(
+							move.From + GetSquareOffset(Directions.East) * 3,
+							move.From + GetSquareOffset(Directions.East)
+						);
+						pieces[rookMove.To] = pieces[rookMove.From];
+						pieces[rookMove.From] = Piece.Empty;
+						castlingRookMove = rookMove;
+					}
+				} else if (isQueenCastling) {
+					if (isWhite && isWhiteQueenCastlingAvaible || !isWhite && isBlackQueenCastlingAvaible) {
+						Move rookMove = new Move(
+							move.From + GetSquareOffset(Directions.West) * 4,
+							move.From + GetSquareOffset(Directions.West)
+						);
+						pieces[rookMove.To] = pieces[rookMove.From];
+						pieces[rookMove.From] = Piece.Empty;
+						castlingRookMove = rookMove;
+					}
+				}
+				if (isWhite) {
+					isWhiteKingCastlingAvaible = false;
+					isWhiteQueenCastlingAvaible = false;
+				} else {
+					isBlackKingCastlingAvaible = false;
+					isBlackQueenCastlingAvaible = false;
+				}
+			} else if (piece.Type == Piece.Types.Rook) {
+				bool isWhite = piece.Color == Piece.Colors.White;
+				if (isWhite) {
+					if (move.From == 0)
+						isWhiteQueenCastlingAvaible = false;
+					else if (move.From == 7)
+						isWhiteKingCastlingAvaible = false;
+				} else {
+					if (move.From == 56)
+						isBlackQueenCastlingAvaible = false;
+					else if (move.From == 64)
+						isBlackKingCastlingAvaible = false;
+				}
 			}
 
 			undoPiece = pieces[move.To];
@@ -448,10 +570,20 @@ namespace Chess {
 		}
 
 		private void UndoMove(Move move) {
+			if (castlingRookMove.IsValid) {
+				pieces[castlingRookMove.From] = pieces[castlingRookMove.To];
+				pieces[castlingRookMove.To] = Piece.Empty;
+				castlingRookMove = new Move();
+			}
+
 			pieces[move.From] = pieces[move.To];
 			pieces[move.To] = undoPiece;
 			moveColor = moveColor == Piece.Colors.White ? Piece.Colors.Black : Piece.Colors.White;
 			kingSquareIndex = undoKingSquareIndex;
+			isWhiteKingCastlingAvaible = undoIsWhiteKingCastlingAvaible;
+			isWhiteQueenCastlingAvaible = undoIsWhiteQueenCastlingAvaible;
+			isBlackKingCastlingAvaible = undoIsBlackKingCastlingAvaible;
+			isBlackQueenCastlingAvaible = undoIsBlackQueenCastlingAvaible;
 		}
 
 		private void ApplyMove() {
@@ -497,7 +629,26 @@ namespace Chess {
 				z = y - 4 + 0.5f
 			};
 			views[lastMove.To].transform.position = newPosition;
+
+			if (castlingRookMove.IsValid) {
+				views[castlingRookMove.To] = views[castlingRookMove.From];
+				views[castlingRookMove.From] = null;
+				x = castlingRookMove.To % 8;
+				y = castlingRookMove.To / 8;
+				newPosition = new Vector3 {
+					x = x - 4 + 0.5f,
+					y = views[castlingRookMove.To].transform.position.y,
+					z = y - 4 + 0.5f
+				};
+				views[castlingRookMove.To].transform.position = newPosition;
+			}
+			castlingRookMove = new Move();
+
 			isKingSelected = false;
+			undoIsWhiteKingCastlingAvaible = isWhiteKingCastlingAvaible;
+			undoIsWhiteQueenCastlingAvaible = isWhiteQueenCastlingAvaible;
+			undoIsBlackKingCastlingAvaible = isBlackKingCastlingAvaible;
+			undoIsBlackQueenCastlingAvaible = isBlackQueenCastlingAvaible;
 			GenerateMoves();
 			if (IsCheckmate()) {
 				if (moveColor == Piece.Colors.White)

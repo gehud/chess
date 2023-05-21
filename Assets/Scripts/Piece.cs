@@ -18,13 +18,11 @@
 
 		public static Piece Empty => new(Types.None, Colors.None);
 
-		public Types Type {
-			get => (Types)(representation & 0b111);
-		}
+		public Types Type => (Types)(representation & 0b111);
 
-		public Colors Color {
-			get => (Colors)(representation & 0b11000);
-		}
+		public Colors Color => (Colors)(representation & 0b11000);
+
+		public bool IsEmpty => this == Empty;
 
 		public bool IsSliding => Type switch {
 			Types.Bishop => true,
