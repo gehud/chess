@@ -3,10 +3,26 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
+using UnityEditor.TextCore.Text;
+using UnityEditorInternal;
 using UnityEngine;
 
 namespace Chess {
 	public class Board : MonoBehaviour {
+		/// <summary>
+		/// Board square navigation directions.
+		/// </summary>
+		public enum Directions {
+			North,
+			South,
+			West,
+			East,
+			NorthWest,
+			SouthEast,
+			NorthEast,
+			SouthWest,
+		}
+
 		[Header("Navigation")]
 		[SerializeField]
 		private GameObject cursor;
@@ -30,18 +46,17 @@ namespace Chess {
 		private int selected = -1;
 
 		private readonly List<GameObject> cursors = new();
-		private readonly List<Move> moves = new();
+		private List<Move> moves;
 
-		private enum Direction {
-			North,
-			South,
-			West,
-			East,
-			NorthWest,
-			SouthEast,
-			NorthEast,
-			SouthWest,
-		}
+		private Piece.Colors moveColor = Piece.Colors.White;
+
+		private int kingSquareIndex = -1;
+		private int twoSquarePawn = -1;
+		private bool isKingSelected = false;
+
+		private static readonly int[] squareDirectionOffsets = new int[] {
+			8, -8, -1, 1, 7, -7, 9, -9
+		};
 
 		private static readonly int[][] squaresToEdgeCount = new int[64][];
 
@@ -155,22 +170,9 @@ namespace Chess {
 			return squareIndex / 8;
 		}
 
-		private void GenerateMoves() {
-			moves.Clear();
-			Parallel.For(0, 64, (squareIndex) => {
-				GenerateMove(squareIndex);
-			});
-		}
-
-		private static readonly int[] squareDirectionOffsets = new int[] {
-			8, -8, -1, 1, 7, -7, 9, -9
-		};
-
-		private int GetSquareOffset(Direction direction) {
+		private int GetSquareOffset(Directions direction) {
 			return squareDirectionOffsets[(int)direction];
 		}
-
-		private int twoSquarePawn = -1;
 
 		private void GeneratePawnMove(int squareIndex) {
 			var color = pieces[squareIndex].Color;
@@ -179,7 +181,7 @@ namespace Chess {
 
 			if (isInVertivalBounds && GetFile(squareIndex) > 0) {
 				var leftDiagonalDirection = color == Piece.Colors.White ? 
-					Direction.NorthWest : Direction.SouthWest;
+					Directions.NorthWest : Directions.SouthWest;
 				int targetSquareIndex = squareIndex + GetSquareOffset(leftDiagonalDirection);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece != Piece.Empty && targetPiece.Color != color) {
@@ -191,7 +193,7 @@ namespace Chess {
 
 			if (isInVertivalBounds && GetFile(squareIndex) < 7) {
 				var rightDiagonalDirection = color == Piece.Colors.White ? 
-					Direction.NorthEast : Direction.SouthEast;
+					Directions.NorthEast : Directions.SouthEast;
 				var targetSquareIndex = squareIndex + GetSquareOffset(rightDiagonalDirection);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece != Piece.Empty && targetPiece.Color != color) {
@@ -209,7 +211,7 @@ namespace Chess {
 
 			if (enPassant) {
 				lock (moves) {
-					var offsetDirection = color == Piece.Colors.White ? Direction.North : Direction.South;
+					var offsetDirection = color == Piece.Colors.White ? Directions.North : Directions.South;
 					moves.Add(new Move(squareIndex, twoSquarePawn + GetSquareOffset(offsetDirection)));
 				}
 			}
@@ -239,7 +241,7 @@ namespace Chess {
 			var color = pieces[squareIndex].Color;
 
 			if (file > 1 && rank > 0) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.SouthWest) * 2 + GetSquareOffset(Direction.North);
+				var targetSquareIndex = squareIndex + GetSquareOffset(Directions.SouthWest) * 2 + GetSquareOffset(Directions.North);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece.Color != color) {
 					lock (moves) {
@@ -249,7 +251,7 @@ namespace Chess {
 			}
 
 			if (file > 0 && rank > 1) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.SouthWest) * 2 + GetSquareOffset(Direction.East);
+				var targetSquareIndex = squareIndex + GetSquareOffset(Directions.SouthWest) * 2 + GetSquareOffset(Directions.East);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece.Color != color) {
 					lock (moves) {
@@ -259,7 +261,7 @@ namespace Chess {
 			}
 
 			if (file > 0 && rank < 6) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.NorthWest) * 2 + GetSquareOffset(Direction.East);
+				var targetSquareIndex = squareIndex + GetSquareOffset(Directions.NorthWest) * 2 + GetSquareOffset(Directions.East);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece.Color != color) {
 					lock (moves) {
@@ -269,7 +271,7 @@ namespace Chess {
 			}
 
 			if (file > 1 && rank < 7) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.NorthWest) * 2 + GetSquareOffset(Direction.South);
+				var targetSquareIndex = squareIndex + GetSquareOffset(Directions.NorthWest) * 2 + GetSquareOffset(Directions.South);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece.Color != color) {
 					lock (moves) {
@@ -279,7 +281,7 @@ namespace Chess {
 			}
 
 			if (file < 7 && rank < 6) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.NorthEast) * 2 + GetSquareOffset(Direction.West);
+				var targetSquareIndex = squareIndex + GetSquareOffset(Directions.NorthEast) * 2 + GetSquareOffset(Directions.West);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece.Color != color) {
 					lock (moves) {
@@ -289,7 +291,7 @@ namespace Chess {
 			}
 
 			if (file < 6 && rank < 7) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.NorthEast) * 2 + GetSquareOffset(Direction.South);
+				var targetSquareIndex = squareIndex + GetSquareOffset(Directions.NorthEast) * 2 + GetSquareOffset(Directions.South);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece.Color != color) {
 					lock (moves) {
@@ -299,7 +301,7 @@ namespace Chess {
 			}
 
 			if (file < 6 && rank > 0) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.SouthEast) * 2 + GetSquareOffset(Direction.North);
+				var targetSquareIndex = squareIndex + GetSquareOffset(Directions.SouthEast) * 2 + GetSquareOffset(Directions.North);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece.Color != color) {
 					lock (moves) {
@@ -310,7 +312,7 @@ namespace Chess {
 			}
 
 			if (file < 7 && rank > 1) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.SouthEast) * 2 + GetSquareOffset(Direction.West);
+				var targetSquareIndex = squareIndex + GetSquareOffset(Directions.SouthEast) * 2 + GetSquareOffset(Directions.West);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece.Color != color) {
 					lock (moves) {
@@ -322,6 +324,12 @@ namespace Chess {
 
 		private void GenerateKingMove(int squareIndex) {
 			var color = pieces[squareIndex].Color;
+
+			if (color == moveColor && !isKingSelected) {
+				kingSquareIndex = squareIndex;
+				undoKingSquareIndex = kingSquareIndex;
+				isKingSelected = true;
+			}
 
 			for (int directionIndex = 0; directionIndex < 8; directionIndex++) {
 				if (squaresToEdgeCount[squareIndex][directionIndex] == 0)
@@ -335,23 +343,6 @@ namespace Chess {
 
 				lock (moves) {
 					moves.Add(new Move(squareIndex, targetSquareIndex));
-				}
-			}
-		}
-
-		private void GenerateMove(int squareIndex) {
-			var piece = pieces[squareIndex];
-
-			if (piece.IsSliding)
-				GenerateSlidingMoves(squareIndex);
-			else {
-				var type = piece.Type;
-				if (type == Piece.Types.Pawn) {
-					GeneratePawnMove(squareIndex);
-				} else if (type == Piece.Types.Knight) {
-					GenerateKnightMove(squareIndex);
-				} else if (type == Piece.Types.King) {
-					GenerateKingMove(squareIndex);
 				}
 			}
 		}
@@ -384,19 +375,74 @@ namespace Chess {
 			}
 		}
 
+		private void GenerateMove(int squareIndex) {
+			var piece = pieces[squareIndex];
+
+			if (piece == Piece.Empty)
+				return;
+
+			if (piece.IsSliding)
+				GenerateSlidingMoves(squareIndex);
+			else {
+				var type = piece.Type;
+				if (type == Piece.Types.Pawn) {
+					GeneratePawnMove(squareIndex);
+				} else if (type == Piece.Types.Knight) {
+					GenerateKnightMove(squareIndex);
+				} else if (type == Piece.Types.King) {
+					GenerateKingMove(squareIndex);
+				}
+			}
+		}
+
+		private List<Move> GenerateDirtyMoves() {
+			moves = new List<Move>();
+			Parallel.For(0, 64, (squareIndex) => {
+				if (pieces[squareIndex].Color == moveColor)
+					GenerateMove(squareIndex);
+			});
+
+			return moves;
+		}
+
+		private void GenerateMoves() {
+			var presudoMoves = GenerateDirtyMoves();
+			var legalMoves = new List<Move>();
+			foreach (var move in presudoMoves) {
+				MakeMove(move);
+				var opopnentResoponses = GenerateDirtyMoves();
+				if (opopnentResoponses.AsParallel().Any(move => move.To == kingSquareIndex)) {
+					// Illegal move.
+				} else {
+					legalMoves.Add(move);
+				}
+
+				UndoMove(move);
+			}
+			moves = legalMoves;
+		}
+
 		private Piece undoPiece = Piece.Empty;
+		private int undoKingSquareIndex = -1;
 		private Move lastMove;
 
 		private void MakeMove(Move move) {
+			if (pieces[move.From].Type == Piece.Types.King) {
+				kingSquareIndex = move.To;
+			}
+
 			undoPiece = pieces[move.To];
 			pieces[move.To] = pieces[move.From];
 			pieces[move.From] = Piece.Empty;
 			lastMove = move;
+			moveColor = moveColor == Piece.Colors.White ? Piece.Colors.Black : Piece.Colors.White;
 		}
 
 		private void UndoMove(Move move) {
 			pieces[move.From] = pieces[move.To];
 			pieces[move.To] = undoPiece;
+			moveColor = moveColor == Piece.Colors.White ? Piece.Colors.Black : Piece.Colors.White;
+			kingSquareIndex = undoKingSquareIndex;
 		}
 
 		private void ApplyMove() {
@@ -442,6 +488,7 @@ namespace Chess {
 				z = y - 4 + 0.5f
 			};
 			views[lastMove.To].transform.position = newPosition;
+			isKingSelected = false;
 			GenerateMoves();
 		}
 
@@ -454,7 +501,7 @@ namespace Chess {
 				return;
 			}
 
-			if (selected == -1) {			
+			if (selected == -1 && pieces[sqareIndex].Color == moveColor) {			
 				selected = sqareIndex;
 				int x = sqareIndex % 8;
 				int y = sqareIndex / 8;
@@ -474,15 +521,13 @@ namespace Chess {
 					};
 					cursors.Add(Instantiate(cursor, cursorPosition, Quaternion.identity));
 				}
-			} else {
-				if (moves.AsParallel().Any(move => move.From == selected && move.To == sqareIndex)) {
-					MakeMove(new Move(selected, sqareIndex));
-					ApplyMove();
-					foreach (var instance in cursors)
-						Destroy(instance);
-					cursors.Clear();
-					selected = -1;
-				}
+			} else if (moves.AsParallel().Any(move => move.From == selected && move.To == sqareIndex)) {
+				MakeMove(new Move(selected, sqareIndex));
+				ApplyMove();
+				foreach (var instance in cursors)
+					Destroy(instance);
+				cursors.Clear();
+				selected = -1;
 			}
 		}
 

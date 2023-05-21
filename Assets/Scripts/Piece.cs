@@ -16,6 +16,7 @@
 			Black = 16,
 		}
 
+		// Represents empty square on the game board.
 		public static Piece Empty => new(Types.None, Colors.None);
 
 		public Types Type {
