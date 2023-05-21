@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
+using Zenject;
 
 namespace Chess {
 	public class Board : MonoBehaviour {
@@ -20,27 +21,15 @@ namespace Chess {
 		}
 
 		[Header("Navigation")]
-		[SerializeField]
-		private GameObject cursor;
-		[Header("Pieces")]
-		[SerializeField] private GameObject whitePawn;
-		[SerializeField] private GameObject whiteKnight;
-		[SerializeField] private GameObject whiteBishop;
-		[SerializeField] private GameObject whiteRook;
-		[SerializeField] private GameObject whiteQueen;
-		[SerializeField] private GameObject whiteKing;
-		[SerializeField] private GameObject blackPawn;
-		[SerializeField] private GameObject blackKnight;
-		[SerializeField] private GameObject blackBishop;
-		[SerializeField] private GameObject blackRook;
-		[SerializeField] private GameObject blackQueen;
-		[SerializeField] private GameObject blackKing;
+		[SerializeField] private GameObject cursor;
 
 		private static readonly int[] squareOffsets = new int[] {
 			8, -8, -1, 1, 7, -7, 9, -9
 		};
 
 		private static readonly int[][] moveLimits = new int[64][];
+
+		[Inject] private readonly IPieceViewFactory pieceViewFactory;
 
 		private readonly Piece[] pieces = new Piece[64];
 		private readonly GameObject[] views = new GameObject[64];
@@ -71,13 +60,13 @@ namespace Chess {
 		private int promotion = -1;
 
 		private void Awake() {
-			Initialize();
+			InitializeGame();
 			SpawnViews();
 			ComputeMoveLimits();
 			GenerateMoves();
 		}
 
-		private void Initialize() {
+		private void InitializeGame() {
 			pieces[0] = new Piece(Piece.Types.Rook, Piece.Colors.White);
 			pieces[1] = new Piece(Piece.Types.Knight, Piece.Colors.White);
 			pieces[2] = new Piece(Piece.Types.Bishop, Piece.Colors.White);
@@ -149,25 +138,6 @@ namespace Chess {
 			return squareOffsets[(int)direction];
 		}
 
-		#region Piece view
-
-		private GameObject GetView(Piece piece) {
-			var color = piece.Color;
-			if (color == Piece.Colors.None)
-				throw new ArgumentException($"Missing view for piece color: {color}", "piece");
-
-			bool isWhite = color == Piece.Colors.White;
-			return piece.Type switch {
-				Piece.Types.Pawn => isWhite ? whitePawn : blackPawn,
-				Piece.Types.Knight => isWhite ? whiteKnight : blackKnight,
-				Piece.Types.Bishop => isWhite ? whiteBishop : blackBishop,
-				Piece.Types.Rook => isWhite ? whiteRook : blackRook,
-				Piece.Types.Queen => isWhite ? whiteQueen : blackQueen,
-				Piece.Types.King => isWhite ? whiteKing : blackKing,
-				_ => throw new ArgumentException($"Missing view for piece type {piece.Type}", "piece")
-			};
-		}
-
 		private void SpawnView(int squareIndex) {
 			Piece piece = pieces[squareIndex];
 
@@ -177,7 +147,7 @@ namespace Chess {
 			int x = squareIndex % 8;
 			int y = squareIndex / 8;
 
-			var view = GetView(piece);
+			var view = pieceViewFactory.Get(piece);
 
 			var position = new Vector3 {
 				x = x - 4 + 0.5f,
@@ -193,8 +163,6 @@ namespace Chess {
 				SpawnView(squareIndex);
 			}
 		}
-
-		#endregion
 
 		#region Move generation
 
@@ -630,7 +598,7 @@ namespace Chess {
 
 			if (promotion != -1) {
 				Destroy(views[lastMove.From]);
-				views[lastMove.From] = Instantiate(GetView(new Piece(Piece.Types.Queen, pieces[lastMove.To].Color)));
+				views[lastMove.From] = Instantiate(pieceViewFactory.Get(new Piece(Piece.Types.Queen, pieces[lastMove.To].Color)));
 			}
 			promotion = -1;
 
