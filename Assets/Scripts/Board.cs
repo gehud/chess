@@ -1,17 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
-using UnityEditor.TextCore.Text;
-using UnityEditorInternal;
 using UnityEngine;
 
 namespace Chess {
 	public class Board : MonoBehaviour {
-		/// <summary>
-		/// Board square navigation directions.
-		/// </summary>
+		public static event Action<Piece.Colors> OnCheckmate;
+
 		public enum Directions {
 			North,
 			South,
@@ -40,12 +36,19 @@ namespace Chess {
 		[SerializeField] private GameObject blackQueen;
 		[SerializeField] private GameObject blackKing;
 
+		private static readonly int[] squareOffsets = new int[] {
+			8, -8, -1, 1, 7, -7, 9, -9
+		};
+
+		private static readonly int[][] moveLimits = new int[64][];
+
 		private readonly Piece[] pieces = new Piece[64];
 		private readonly GameObject[] views = new GameObject[64];
 
 		private int selected = -1;
 
 		private readonly List<GameObject> cursors = new();
+
 		private List<Move> moves;
 
 		private Piece.Colors moveColor = Piece.Colors.White;
@@ -53,26 +56,23 @@ namespace Chess {
 		private int kingSquareIndex = -1;
 		private int twoSquarePawn = -1;
 		private bool isKingSelected = false;
-
-		private static readonly int[] squareDirectionOffsets = new int[] {
-			8, -8, -1, 1, 7, -7, 9, -9
-		};
-
-		private static readonly int[][] squaresToEdgeCount = new int[64][];
+		private Piece undoPiece = Piece.Empty;
+		private int undoKingSquareIndex = -1;
+		private Move lastMove;
 
 		private void Awake() {
-			InitializeStartBoard();
-			SpawnPieceViews();
-			ComputeMoveData();
+			Initialize();
+			SpawnViews();
+			ComputeMoveLimits();
 			GenerateMoves();
 		}
 
-		private void InitializeStartBoard() {
+		private void Initialize() {
 			pieces[0] = new Piece(Piece.Types.Rook, Piece.Colors.White);
 			pieces[1] = new Piece(Piece.Types.Knight, Piece.Colors.White);
 			pieces[2] = new Piece(Piece.Types.Bishop, Piece.Colors.White);
-			pieces[3] = new Piece(Piece.Types.King, Piece.Colors.White);
-			pieces[4] = new Piece(Piece.Types.Queen, Piece.Colors.White);
+			pieces[3] = new Piece(Piece.Types.Queen, Piece.Colors.White);
+			pieces[4] = new Piece(Piece.Types.King, Piece.Colors.White);
 			pieces[5] = new Piece(Piece.Types.Bishop, Piece.Colors.White);
 			pieces[6] = new Piece(Piece.Types.Knight, Piece.Colors.White);
 			pieces[7] = new Piece(Piece.Types.Rook, Piece.Colors.White);
@@ -103,42 +103,7 @@ namespace Chess {
 			pieces[48] = new Piece(Piece.Types.Pawn, Piece.Colors.Black);
 		}
 
-		private void SpawnPieceViews() {
-			for (int i = 0; i < 64; i++) {
-				int x = i % 8;
-				int y = i / 8;
-				var position = new Vector3 {
-					x = x - 4 + 0.5f,
-					y = 0.3f,
-					z = y - 4 + 0.5f
-				};
-				Piece piece = pieces[i];
-				bool isWhite = piece.Color == Piece.Colors.White;
-				Piece.Types type = piece.Type;
-				switch (type) {
-					case Piece.Types.Pawn:
-						views[i] = Instantiate(isWhite ? whitePawn : blackPawn, position, Quaternion.identity, transform);
-						break;
-					case Piece.Types.Knight:
-						views[i] = Instantiate(isWhite ? whiteKnight : blackKnight, position, Quaternion.identity, transform);
-						break;
-					case Piece.Types.Bishop:
-						views[i] = Instantiate(isWhite ? whiteBishop : blackBishop, position, Quaternion.identity, transform);
-						break;
-					case Piece.Types.Rook:
-						views[i] = Instantiate(isWhite ? whiteRook : blackRook, position, Quaternion.identity, transform);
-						break;
-					case Piece.Types.Queen:
-						views[i] = Instantiate(isWhite ? whiteQueen : blackQueen, position, Quaternion.identity, transform);
-						break;
-					case Piece.Types.King:
-						views[i] = Instantiate(isWhite ? whiteKing : blackKing, position, Quaternion.identity, transform);
-						break;
-				}
-			}
-		}
-
-		private void ComputeMoveData() {
+		private void ComputeMoveLimits() {
 			for (int file = 0; file < 8; file++) {
 				for (int rank = 0; rank < 8; rank++) {
 					int northSquareCount = 7 - rank;
@@ -148,15 +113,15 @@ namespace Chess {
 
 					int squareIndex = rank * 8 + file;
 
-					squaresToEdgeCount[squareIndex] = new int[] {
+					moveLimits[squareIndex] = new int[] {
 						northSquareCount,
 						southSquareCount,
 						westSquareCount,
 						eastSquareCount,
-						Math.Min(northSquareCount, westSquareCount),
-						Math.Min(southSquareCount, eastSquareCount),
-						Math.Min(northSquareCount, eastSquareCount),
-						Math.Min(southSquareCount, westSquareCount),
+						Mathf.Min(northSquareCount, westSquareCount),
+						Mathf.Min(southSquareCount, eastSquareCount),
+						Mathf.Min(northSquareCount, eastSquareCount),
+						Mathf.Min(southSquareCount, westSquareCount),
 					};
 				}
 			}
@@ -171,8 +136,57 @@ namespace Chess {
 		}
 
 		private int GetSquareOffset(Directions direction) {
-			return squareDirectionOffsets[(int)direction];
+			return squareOffsets[(int)direction];
 		}
+
+		#region Piece view
+
+		private GameObject GetView(Piece piece) {
+			var color = piece.Color;
+			if (color == Piece.Colors.None)
+				throw new ArgumentException($"Missing view for piece color: {color}", "piece");
+
+			bool isWhite = color == Piece.Colors.White;
+			return piece.Type switch {
+				Piece.Types.Pawn => isWhite ? whitePawn : blackPawn,
+				Piece.Types.Knight => isWhite ? whiteKnight : blackKnight,
+				Piece.Types.Bishop => isWhite ? whiteBishop : blackBishop,
+				Piece.Types.Rook => isWhite ? whiteRook : blackRook,
+				Piece.Types.Queen => isWhite ? whiteQueen : blackQueen,
+				Piece.Types.King => isWhite ? whiteKing : blackKing,
+				_ => throw new ArgumentException($"Missing view for piece type {piece.Type}", "piece")
+			};
+		}
+
+		private void SpawnView(int squareIndex) {
+			Piece piece = pieces[squareIndex];
+
+			if (piece == Piece.Empty)
+				return;
+
+			int x = squareIndex % 8;
+			int y = squareIndex / 8;
+
+			var view = GetView(piece);
+
+			var position = new Vector3 {
+				x = x - 4 + 0.5f,
+				y = view.transform.position.y,
+				z = y - 4 + 0.5f
+			};
+
+			views[squareIndex] = Instantiate(view, position, Quaternion.identity);
+		}
+
+		private void SpawnViews() {
+			for (int squareIndex = 0; squareIndex < 64; squareIndex++) {
+				SpawnView(squareIndex);
+			}
+		}
+
+		#endregion
+
+		#region Move generation
 
 		private void GeneratePawnMove(int squareIndex) {
 			var color = pieces[squareIndex].Color;
@@ -219,8 +233,8 @@ namespace Chess {
 			int directionOffsetIndex = color == Piece.Colors.White ? 0 : 1;
 			int avaibleSquares = (color == Piece.Colors.White && GetRank(squareIndex) == 1 
 				|| color == Piece.Colors.Black && GetRank(squareIndex) == 6) ? 2 : 1;
-			for (int i = 0; i < Mathf.Min(squaresToEdgeCount[squareIndex][directionOffsetIndex], avaibleSquares); i++) {
-				var targetSquareIndex = squareIndex + squareDirectionOffsets[directionOffsetIndex] * (i + 1);
+			for (int i = 0; i < Mathf.Min(moveLimits[squareIndex][directionOffsetIndex], avaibleSquares); i++) {
+				var targetSquareIndex = squareIndex + squareOffsets[directionOffsetIndex] * (i + 1);
 				var targetPiece = pieces[targetSquareIndex];
 
 				if (targetPiece.Color == color)
@@ -332,10 +346,10 @@ namespace Chess {
 			}
 
 			for (int directionIndex = 0; directionIndex < 8; directionIndex++) {
-				if (squaresToEdgeCount[squareIndex][directionIndex] == 0)
+				if (moveLimits[squareIndex][directionIndex] == 0)
 					continue;
 
-				int targetSquareIndex = squareIndex + squareDirectionOffsets[directionIndex];
+				int targetSquareIndex = squareIndex + squareOffsets[directionIndex];
 				var targetPiece = pieces[targetSquareIndex];
 
 				if (targetPiece.Color == color)
@@ -356,8 +370,8 @@ namespace Chess {
 			int endDirectionIndex = type == Piece.Types.Rook ? 4 : 8;
 
 			for (int directionIndex = startDirectionIndex; directionIndex < endDirectionIndex; directionIndex++) {
-				for (int i = 0; i < squaresToEdgeCount[squareIndex][directionIndex]; i++) {
-					int targetSquareIndex = squareIndex + squareDirectionOffsets[directionIndex] * (i + 1);
+				for (int i = 0; i < moveLimits[squareIndex][directionIndex]; i++) {
+					int targetSquareIndex = squareIndex + squareOffsets[directionIndex] * (i + 1);
 					var targetPiece = pieces[targetSquareIndex];
 
 					// Stop on friend.
@@ -422,9 +436,7 @@ namespace Chess {
 			moves = legalMoves;
 		}
 
-		private Piece undoPiece = Piece.Empty;
-		private int undoKingSquareIndex = -1;
-		private Move lastMove;
+		#endregion
 
 		private void MakeMove(Move move) {
 			if (pieces[move.From].Type == Piece.Types.King) {
@@ -490,9 +502,25 @@ namespace Chess {
 			views[lastMove.To].transform.position = newPosition;
 			isKingSelected = false;
 			GenerateMoves();
+			if (IsCheckmate()) {
+				if (moveColor == Piece.Colors.White)
+					OnCheckmate?.Invoke(Piece.Colors.Black);
+				else
+					OnCheckmate?.Invoke(Piece.Colors.White);
+			}
+		}
+
+		private bool IsCheckmate() => moves.Count == 0;
+
+		private void MakeComputerMove() {
+			MakeMove(moves[UnityEngine.Random.Range(0, moves.Count)]);
+			ApplyMove();
 		}
 
 		private void OnSquare(int sqareIndex) {
+			if (IsCheckmate())
+				return;
+
 			if (selected == sqareIndex || sqareIndex == -1) {
 				selected = -1;
 				foreach (var instance in cursors)
@@ -528,6 +556,9 @@ namespace Chess {
 					Destroy(instance);
 				cursors.Clear();
 				selected = -1;
+
+				if (moveColor == Piece.Colors.Black)
+					MakeComputerMove();
 			}
 		}
 
