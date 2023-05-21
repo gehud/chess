@@ -68,6 +68,7 @@ namespace Chess {
 		private Move castlingRookMove;
 		private int undoKingSquareIndex = -1;
 		private Move lastMove;
+		private int promotion = -1;
 
 		private void Awake() {
 			Initialize();
@@ -497,7 +498,7 @@ namespace Chess {
 			var presudoMoves = GenerateDirtyMoves();
 			var legalMoves = new List<Move>();
 			foreach (var move in presudoMoves) {
-				MakeMove(move);
+				DoMove(move);
 				var opopnentResoponses = GenerateDirtyMoves();
 				if (opopnentResoponses.AsParallel().Any(move => move.To == kingSquareIndex)) {
 					// Illegal move.
@@ -512,7 +513,7 @@ namespace Chess {
 
 		#endregion
 
-		private void MakeMove(Move move) {
+		private void DoMove(Move move) {
 			var piece = pieces[move.From];
 			if (piece.Type == Piece.Types.King) {
 				kingSquareIndex = move.To;
@@ -560,6 +561,13 @@ namespace Chess {
 					else if (move.From == 64)
 						isBlackKingCastlingAvaible = false;
 				}
+			} else if (piece.Type == Piece.Types.Pawn) {
+				bool isWhite = piece.Color == Piece.Colors.White;
+				int rank = GetRank(move.To);
+				if (isWhite && rank == 7 || !isWhite && rank == 0) {
+					promotion = move.To;
+					pieces[move.From] = new Piece(Piece.Types.Queen, piece.Color);
+				}
 			}
 
 			undoPiece = pieces[move.To];
@@ -576,9 +584,14 @@ namespace Chess {
 				castlingRookMove = new Move();
 			}
 
+			moveColor = moveColor == Piece.Colors.White ? Piece.Colors.Black : Piece.Colors.White;
+			if (promotion != -1) {
+				pieces[move.To] = new Piece(Piece.Types.Pawn, moveColor);
+				promotion = -1;
+			}
+
 			pieces[move.From] = pieces[move.To];
 			pieces[move.To] = undoPiece;
-			moveColor = moveColor == Piece.Colors.White ? Piece.Colors.Black : Piece.Colors.White;
 			kingSquareIndex = undoKingSquareIndex;
 			isWhiteKingCastlingAvaible = undoIsWhiteKingCastlingAvaible;
 			isWhiteQueenCastlingAvaible = undoIsWhiteQueenCastlingAvaible;
@@ -614,6 +627,12 @@ namespace Chess {
 				if (!possibleEnPassant)
 					twoSquarePawn = -1;
 			}
+
+			if (promotion != -1) {
+				Destroy(views[lastMove.From]);
+				views[lastMove.From] = Instantiate(GetView(new Piece(Piece.Types.Queen, pieces[lastMove.To].Color)));
+			}
+			promotion = -1;
 
 			if (views[lastMove.To] != null) {
 				Destroy(views[lastMove.To]);
@@ -661,14 +680,11 @@ namespace Chess {
 		private bool IsCheckmate() => moves.Count == 0;
 
 		private void MakeComputerMove() {
-			MakeMove(moves[UnityEngine.Random.Range(0, moves.Count)]);
+			DoMove(moves[UnityEngine.Random.Range(0, moves.Count)]);
 			ApplyMove();
 		}
 
 		private void OnSquare(int sqareIndex) {
-			if (IsCheckmate())
-				return;
-
 			if (selected == sqareIndex || sqareIndex == -1) {
 				selected = -1;
 				foreach (var instance in cursors)
@@ -698,14 +714,17 @@ namespace Chess {
 					cursors.Add(Instantiate(cursor, cursorPosition, Quaternion.identity));
 				}
 			} else if (moves.AsParallel().Any(move => move.From == selected && move.To == sqareIndex)) {
-				MakeMove(new Move(selected, sqareIndex));
+				if (IsCheckmate())
+					return;
+
+				DoMove(new Move(selected, sqareIndex));
 				ApplyMove();
 				foreach (var instance in cursors)
 					Destroy(instance);
 				cursors.Clear();
 				selected = -1;
 
-				if (moveColor == Piece.Colors.Black)
+				if (moveColor == Piece.Colors.Black && !IsCheckmate())
 					MakeComputerMove();
 			}
 		}
