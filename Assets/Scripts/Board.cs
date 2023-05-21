@@ -237,15 +237,12 @@ namespace Chess {
 				var targetSquareIndex = squareIndex + squareOffsets[directionOffsetIndex] * (i + 1);
 				var targetPiece = pieces[targetSquareIndex];
 
-				if (targetPiece.Color == color)
+				if (targetPiece != Piece.Empty)
 					break;
 
 				lock (moves) {
 					moves.Add(new Move(squareIndex, targetSquareIndex));
 				}
-
-				if (targetPiece.Color != Piece.Colors.None && targetPiece.Color != color)
-					break;
 			}
 		}
 
