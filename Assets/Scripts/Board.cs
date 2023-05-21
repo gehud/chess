@@ -147,15 +147,15 @@ namespace Chess {
 			int x = squareIndex % 8;
 			int y = squareIndex / 8;
 
-			var view = pieceViewFactory.Get(piece);
+			var view = pieceViewFactory.Create(piece);
 
-			var position = new Vector3 {
+			view.transform.position = new Vector3 {
 				x = x - 4 + 0.5f,
 				y = view.transform.position.y,
 				z = y - 4 + 0.5f
 			};
 
-			views[squareIndex] = Instantiate(view, position, Quaternion.identity);
+			views[squareIndex] = view;
 		}
 
 		private void SpawnViews() {
@@ -598,7 +598,7 @@ namespace Chess {
 
 			if (promotion != -1) {
 				Destroy(views[lastMove.From]);
-				views[lastMove.From] = Instantiate(pieceViewFactory.Get(new Piece(Piece.Types.Queen, pieces[lastMove.To].Color)));
+				views[lastMove.From] = pieceViewFactory.Create(new Piece(Piece.Types.Queen, pieces[lastMove.To].Color));
 			}
 			promotion = -1;
 
@@ -647,8 +647,49 @@ namespace Chess {
 
 		private bool IsCheckmate() => moves.Count == 0;
 
+		private const int PAWN = 100;
+		private const int KNIGHT = 300;
+		private const int BISHOP = 300;
+		private const int ROOK = 500;
+		private const int QUEEN = 900;
+
+		private int CountColor(Piece.Colors color) {
+			int result = 0;
+			var pieces = this.pieces.AsParallel();
+			result += pieces.Count(piece => piece.Type == Piece.Types.Pawn && piece.Color == color) * PAWN;
+			result += pieces.Count(piece => piece.Type == Piece.Types.Knight && piece.Color == color) * KNIGHT;
+			result += pieces.Count(piece => piece.Type == Piece.Types.Bishop && piece.Color == color) * BISHOP;
+			result += pieces.Count(piece => piece.Type == Piece.Types.Rook && piece.Color == color) * ROOK;
+			result += pieces.Count(piece => piece.Type == Piece.Types.Queen && piece.Color == color) * QUEEN;
+			return result;
+		}
+
+		private int Evaluate() {
+			int whiteEvaluation = CountColor(Piece.Colors.White);
+			int blackEvaluation = CountColor(Piece.Colors.Black);
+
+			return blackEvaluation - whiteEvaluation;
+		}
+
 		private void MakeComputerMove() {
-			DoMove(moves[UnityEngine.Random.Range(0, moves.Count)]);
+			var bestMove = new Move();
+			var bestValue = int.MinValue;
+
+			for (var i = 0; i < moves.Count; i++) {
+				var newGameMove = moves[i];
+				DoMove(newGameMove);
+				var boardValue = Evaluate();
+				UndoMove(newGameMove);
+				if (boardValue > bestValue) {
+					bestValue = boardValue;
+					bestMove = newGameMove;
+				}
+			}
+
+			if (!bestMove.IsValid)
+				bestMove = moves[UnityEngine.Random.Range(0, moves.Count)];
+
+			DoMove(bestMove);
 			ApplyMove();
 		}
 

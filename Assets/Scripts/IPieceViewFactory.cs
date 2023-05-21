@@ -2,6 +2,6 @@
 
 namespace Chess {
 	public interface IPieceViewFactory {
-		GameObject Get(Piece piece);
+		GameObject Create(Piece piece);
 	}
 }
