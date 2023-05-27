@@ -7,6 +7,9 @@ using Zenject;
 
 namespace Chess {
 	public class Board : MonoBehaviour {
+		public const int SIZE = 8;
+		public const int AREA = SIZE * SIZE;
+
 		public static event Action<Piece.Colors> OnCheckmate;
 
 		public enum Directions {
@@ -27,7 +30,7 @@ namespace Chess {
 			8, -8, -1, 1, 7, -7, 9, -9
 		};
 
-		private static readonly int[][] moveLimits = new int[64][];
+		private static readonly int[] moveLimits = new int[AREA * 8];
 
 		[Inject] private readonly IPieceViewFactory pieceViewFactory;
 
@@ -42,22 +45,20 @@ namespace Chess {
 
 		private Piece.Colors moveColor = Piece.Colors.White;
 
-		private int kingSquareIndex = -1;
-		private int twoSquarePawn = -1;
-		private bool isBlackKingCastlingAvaible = true;
-		private bool isBlackQueenCastlingAvaible = true;
-		private bool isWhiteKingCastlingAvaible = true;
-		private bool isWhiteQueenCastlingAvaible = true;
-		private bool undoIsBlackKingCastlingAvaible = true;
-		private bool undoIsBlackQueenCastlingAvaible = true;
-		private bool undoIsWhiteKingCastlingAvaible = true;
-		private bool undoIsWhiteQueenCastlingAvaible = true;
-		private bool isKingSelected = false;
-		private Piece undoPiece = Piece.Empty;
-		private Move castlingRookMove;
-		private int undoKingSquareIndex = -1;
-		private Move lastMove;
-		private int promotion = -1;
+		private struct State {
+			public Piece Captured;
+			public Move Move;
+			public Move RookCastling;
+			public int PosiibleEnPassanVictimIndex;
+			public int PromotedPawnIndex;
+			public bool IsWhiteKingsideCastlingAvaible;
+			public bool IsWhiteQueensideCastlingAvaible;
+			public bool IsBlackKingsideCastlingAvaible;
+			public bool IsBlackQueensideCastlingAvaible;
+		}
+
+		private readonly Stack<State> history = new();
+		private State currentState;
 
 		private void Awake() {
 			InitializeGame();
@@ -100,30 +101,39 @@ namespace Chess {
 			pieces[50] = new Piece(Piece.Types.Pawn, Piece.Colors.Black);
 			pieces[49] = new Piece(Piece.Types.Pawn, Piece.Colors.Black);
 			pieces[48] = new Piece(Piece.Types.Pawn, Piece.Colors.Black);
+
+			currentState = new() {
+				Captured = Piece.Empty,
+				Move = new Move(),
+				RookCastling = new Move(),
+				PosiibleEnPassanVictimIndex = -1,
+				PromotedPawnIndex = -1,
+				IsWhiteKingsideCastlingAvaible = true,
+				IsWhiteQueensideCastlingAvaible = true,
+				IsBlackKingsideCastlingAvaible = true,
+				IsBlackQueensideCastlingAvaible = true
+			};
 		}
 
 		private void ComputeMoveLimits() {
-			for (int file = 0; file < 8; file++) {
-				for (int rank = 0; rank < 8; rank++) {
-					int northSquareCount = 7 - rank;
-					int southSquareCount = rank;
-					int westSquareCount = file;
-					int eastSquareCount = 7 - file;
+			Parallel.For(0, AREA, (index) => {
+				int file = index % SIZE;
+				int rank = index / SIZE;
 
-					int squareIndex = rank * 8 + file;
+				int northSquareCount = 7 - rank;
+				int southSquareCount = rank;
+				int westSquareCount = file;
+				int eastSquareCount = 7 - file;
 
-					moveLimits[squareIndex] = new int[] {
-						northSquareCount,
-						southSquareCount,
-						westSquareCount,
-						eastSquareCount,
-						Mathf.Min(northSquareCount, westSquareCount),
-						Mathf.Min(southSquareCount, eastSquareCount),
-						Mathf.Min(northSquareCount, eastSquareCount),
-						Mathf.Min(southSquareCount, westSquareCount),
-					};
-				}
-			}
+				moveLimits[index + AREA * 0] = northSquareCount;
+				moveLimits[index + AREA * 1] = southSquareCount;
+				moveLimits[index + AREA * 2] = westSquareCount;
+				moveLimits[index + AREA * 3] = eastSquareCount;
+				moveLimits[index + AREA * 4] = Mathf.Min(northSquareCount, westSquareCount);
+				moveLimits[index + AREA * 5] = Mathf.Min(southSquareCount, eastSquareCount);
+				moveLimits[index + AREA * 6] = Mathf.Min(northSquareCount, eastSquareCount);
+				moveLimits[index + AREA * 7] = Mathf.Min(southSquareCount, westSquareCount);
+			});
 		}
 
 		private int GetFile(int squareIndex) {
@@ -132,6 +142,10 @@ namespace Chess {
 
 		private int GetRank(int squareIndex) {
 			return squareIndex / 8;
+		}
+
+		private int GetMoveLimit(int squareIndex, int directionindex) {
+			return moveLimits[squareIndex + directionindex * AREA];
 		}
 
 		private int GetSquareOffset(Directions direction) {
@@ -164,8 +178,6 @@ namespace Chess {
 			}
 		}
 
-		#region Move generation
-
 		private void GeneratePawnMove(int squareIndex) {
 			var color = pieces[squareIndex].Color;
 
@@ -195,7 +207,7 @@ namespace Chess {
 				}
 			}
 
-			bool enPassant = (squareIndex - twoSquarePawn) switch {
+			bool enPassant = (squareIndex - currentState.PosiibleEnPassanVictimIndex) switch {
 				1 => true,
 				-1 => true,
 				_ => false
@@ -204,14 +216,14 @@ namespace Chess {
 			if (enPassant) {
 				lock (moves) {
 					var offsetDirection = color == Piece.Colors.White ? Directions.North : Directions.South;
-					moves.Add(new Move(squareIndex, twoSquarePawn + GetSquareOffset(offsetDirection)));
+					moves.Add(new Move(squareIndex, currentState.PosiibleEnPassanVictimIndex + GetSquareOffset(offsetDirection)));
 				}
 			}
 
 			int directionOffsetIndex = color == Piece.Colors.White ? 0 : 1;
 			int avaibleSquares = (color == Piece.Colors.White && GetRank(squareIndex) == 1 
 				|| color == Piece.Colors.Black && GetRank(squareIndex) == 6) ? 2 : 1;
-			for (int i = 0; i < Mathf.Min(moveLimits[squareIndex][directionOffsetIndex], avaibleSquares); i++) {
+			for (int i = 0; i < Mathf.Min(GetMoveLimit(squareIndex, directionOffsetIndex), avaibleSquares); i++) {
 				var targetSquareIndex = squareIndex + squareOffsets[directionOffsetIndex] * (i + 1);
 				var targetPiece = pieces[targetSquareIndex];
 
@@ -314,15 +326,9 @@ namespace Chess {
 		private void GenerateKingMove(int squareIndex) {
 			var color = pieces[squareIndex].Color;
 
-			if (color == moveColor && !isKingSelected) {
-				kingSquareIndex = squareIndex;
-				undoKingSquareIndex = kingSquareIndex;
-				isKingSelected = true;
-			}
-
 			// Castling
 			if (color == Piece.Colors.White) {
-				if (isWhiteKingCastlingAvaible) {
+				if (currentState.IsWhiteKingsideCastlingAvaible) {
 					bool isWhiteKingCastlingPossigle = true;
 					for (int i = 1; i <= 2; i++) {
 						if (!pieces[squareIndex + GetSquareOffset(Directions.East) * i].IsEmpty) {
@@ -338,7 +344,7 @@ namespace Chess {
 					}
 				}
 
-				if (isWhiteQueenCastlingAvaible) {
+				if (currentState.IsWhiteQueensideCastlingAvaible) {
 					bool isWhiteQueenCastlingPossigle = true;
 					for (int i = 1; i <= 3; i++) {
 						if (!pieces[squareIndex + GetSquareOffset(Directions.West) * i].IsEmpty) {
@@ -354,7 +360,7 @@ namespace Chess {
 					}
 				}
 			} else {
-				if (isBlackKingCastlingAvaible) {
+				if (currentState.IsBlackKingsideCastlingAvaible) {
 					bool isBlackKingCastlingPossigle = true;
 					for (int i = 1; i <= 2; i++) {
 						if (!pieces[squareIndex + GetSquareOffset(Directions.East) * i].IsEmpty) {
@@ -371,7 +377,7 @@ namespace Chess {
 				}
 
 
-				if (isBlackQueenCastlingAvaible) {
+				if (currentState.IsBlackQueensideCastlingAvaible) {
 					bool isBlackQueenCastlingPossigle = true;
 					for (int i = 1; i <= 3; i++) {
 						if (!pieces[squareIndex + GetSquareOffset(Directions.West) * i].IsEmpty) {
@@ -389,7 +395,7 @@ namespace Chess {
 			}
 
 			for (int directionIndex = 0; directionIndex < 8; directionIndex++) {
-				if (moveLimits[squareIndex][directionIndex] == 0)
+				if (GetMoveLimit(squareIndex, directionIndex) == 0)
 					continue;
 
 				int targetSquareIndex = squareIndex + squareOffsets[directionIndex];
@@ -413,7 +419,7 @@ namespace Chess {
 			int endDirectionIndex = type == Piece.Types.Rook ? 4 : 8;
 
 			for (int directionIndex = startDirectionIndex; directionIndex < endDirectionIndex; directionIndex++) {
-				for (int i = 0; i < moveLimits[squareIndex][directionIndex]; i++) {
+				for (int i = 0; i < GetMoveLimit(squareIndex, directionIndex); i++) {
 					int targetSquareIndex = squareIndex + squareOffsets[directionIndex] * (i + 1);
 					var targetPiece = pieces[targetSquareIndex];
 
@@ -462,125 +468,130 @@ namespace Chess {
 			return moves;
 		}
 
-		private void GenerateMoves() {
+		private void SwapMoveColor() {
+			moveColor = moveColor == Piece.Colors.White ? Piece.Colors.Black : Piece.Colors.White;
+		}
+
+		private List<Move> GenerateMoves() {
 			var presudoMoves = GenerateDirtyMoves();
 			var legalMoves = new List<Move>();
 			foreach (var move in presudoMoves) {
 				DoMove(move);
+				int kingIndex = -1;
+				Parallel.For(0, 64, (index, controll) => {
+					if (pieces[index].Type == Piece.Types.King && pieces[index].Color != moveColor) {
+						kingIndex = index;
+						controll.Break();
+					}
+				});
 				var opopnentResoponses = GenerateDirtyMoves();
-				if (opopnentResoponses.AsParallel().Any(move => move.To == kingSquareIndex)) {
+				if (opopnentResoponses.AsParallel().Any(move => move.To == kingIndex)) {
 					// Illegal move.
 				} else {
 					legalMoves.Add(move);
 				}
-
-				UndoMove(move);
+				UndoMove();
 			}
 			moves = legalMoves;
+			return moves;
 		}
 
-		#endregion
-
 		private void DoMove(Move move) {
+			history.Push(currentState);
 			var piece = pieces[move.From];
 			if (piece.Type == Piece.Types.King) {
-				kingSquareIndex = move.To;
 				bool isWhite = piece.Color == Piece.Colors.White;
 				bool isKingCastling = move.To == move.From + GetSquareOffset(Directions.East) * 2;
 				bool isQueenCastling = move.To == move.From + GetSquareOffset(Directions.West) * 2;
 				if (isKingCastling) {
-					if (isWhite && isWhiteKingCastlingAvaible || !isWhite && isBlackKingCastlingAvaible) {
+					if (isWhite && currentState.IsWhiteKingsideCastlingAvaible || !isWhite && currentState.IsBlackKingsideCastlingAvaible) {
 						Move rookMove = new Move(
 							move.From + GetSquareOffset(Directions.East) * 3,
 							move.From + GetSquareOffset(Directions.East)
 						);
 						pieces[rookMove.To] = pieces[rookMove.From];
 						pieces[rookMove.From] = Piece.Empty;
-						castlingRookMove = rookMove;
+						currentState.RookCastling = rookMove;
 					}
 				} else if (isQueenCastling) {
-					if (isWhite && isWhiteQueenCastlingAvaible || !isWhite && isBlackQueenCastlingAvaible) {
+					if (isWhite && currentState.IsWhiteQueensideCastlingAvaible || !isWhite && currentState.IsBlackQueensideCastlingAvaible) {
 						Move rookMove = new Move(
 							move.From + GetSquareOffset(Directions.West) * 4,
 							move.From + GetSquareOffset(Directions.West)
 						);
 						pieces[rookMove.To] = pieces[rookMove.From];
 						pieces[rookMove.From] = Piece.Empty;
-						castlingRookMove = rookMove;
+						currentState.RookCastling = rookMove;
 					}
 				}
 				if (isWhite) {
-					isWhiteKingCastlingAvaible = false;
-					isWhiteQueenCastlingAvaible = false;
+					currentState.IsWhiteKingsideCastlingAvaible = false;
+					currentState.IsWhiteQueensideCastlingAvaible = false;
 				} else {
-					isBlackKingCastlingAvaible = false;
-					isBlackQueenCastlingAvaible = false;
+					currentState.IsBlackKingsideCastlingAvaible = false;
+					currentState.IsBlackQueensideCastlingAvaible = false;
 				}
 			} else if (piece.Type == Piece.Types.Rook) {
 				bool isWhite = piece.Color == Piece.Colors.White;
 				if (isWhite) {
 					if (move.From == 0)
-						isWhiteQueenCastlingAvaible = false;
+						currentState.IsWhiteQueensideCastlingAvaible = false;
 					else if (move.From == 7)
-						isWhiteKingCastlingAvaible = false;
+						currentState.IsWhiteKingsideCastlingAvaible = false;
 				} else {
 					if (move.From == 56)
-						isBlackQueenCastlingAvaible = false;
+						currentState.IsBlackQueensideCastlingAvaible = false;
 					else if (move.From == 64)
-						isBlackKingCastlingAvaible = false;
+						currentState.IsBlackKingsideCastlingAvaible = false;
 				}
 			} else if (piece.Type == Piece.Types.Pawn) {
 				bool isWhite = piece.Color == Piece.Colors.White;
 				int rank = GetRank(move.To);
 				if (isWhite && rank == 7 || !isWhite && rank == 0) {
-					promotion = move.To;
+					currentState.PromotedPawnIndex = move.To;
 					pieces[move.From] = new Piece(Piece.Types.Queen, piece.Color);
 				}
 			}
 
-			undoPiece = pieces[move.To];
+			currentState.Captured = pieces[move.To];
 			pieces[move.To] = pieces[move.From];
 			pieces[move.From] = Piece.Empty;
-			lastMove = move;
-			moveColor = moveColor == Piece.Colors.White ? Piece.Colors.Black : Piece.Colors.White;
+			currentState.Move = move;
+			SwapMoveColor();
 		}
 
-		private void UndoMove(Move move) {
-			if (castlingRookMove.IsValid) {
-				pieces[castlingRookMove.From] = pieces[castlingRookMove.To];
-				pieces[castlingRookMove.To] = Piece.Empty;
-				castlingRookMove = new Move();
+		private void UndoMove() {
+			SwapMoveColor();
+
+			if (currentState.RookCastling.IsValid) {
+				pieces[currentState.RookCastling.From] = pieces[currentState.RookCastling.To];
+				pieces[currentState.RookCastling.To] = Piece.Empty;
 			}
 
-			moveColor = moveColor == Piece.Colors.White ? Piece.Colors.Black : Piece.Colors.White;
-			if (promotion != -1) {
-				pieces[move.To] = new Piece(Piece.Types.Pawn, moveColor);
-				promotion = -1;
+			if (currentState.PromotedPawnIndex != -1) {
+				pieces[currentState.Move.To] = new Piece(Piece.Types.Pawn, moveColor);
 			}
 
-			pieces[move.From] = pieces[move.To];
-			pieces[move.To] = undoPiece;
-			kingSquareIndex = undoKingSquareIndex;
-			isWhiteKingCastlingAvaible = undoIsWhiteKingCastlingAvaible;
-			isWhiteQueenCastlingAvaible = undoIsWhiteQueenCastlingAvaible;
-			isBlackKingCastlingAvaible = undoIsBlackKingCastlingAvaible;
-			isBlackQueenCastlingAvaible = undoIsBlackQueenCastlingAvaible;
+			pieces[currentState.Move.From] = pieces[currentState.Move.To];
+			pieces[currentState.Move.To] = currentState.Captured;
+			currentState = history.Pop();
 		}
 
 		private void ApplyMove() {
-			if (pieces[lastMove.To].Type == Piece.Types.Pawn) {
+			history.Clear();
+			if (pieces[currentState.Move.To].Type == Piece.Types.Pawn) {
 				bool possibleEnPassant = false;
 
-				if (Mathf.Abs(lastMove.To - lastMove.From) > 9) {
-					twoSquarePawn = lastMove.To;
+				if (Mathf.Abs(currentState.Move.To - currentState.Move.From) > 9) {
+					currentState.PosiibleEnPassanVictimIndex = currentState.Move.To;
 					possibleEnPassant = true;
 				}
 
-				bool enPassant = (lastMove.To - twoSquarePawn) switch { 
+				bool enPassant = (currentState.Move.To - currentState.PosiibleEnPassanVictimIndex) switch { 
 					8 => true,
 					-8 => true,
 					_ => false
-				} && (lastMove.To - lastMove.From) switch { 
+				} && (currentState.Move.To - currentState.Move.From) switch { 
 					7 => true,
 					-7 => true,
 					9 => true,
@@ -589,53 +600,49 @@ namespace Chess {
 				};
 
 				if (enPassant) {
-					Destroy(views[twoSquarePawn]);
+					Destroy(views[currentState.PosiibleEnPassanVictimIndex]);
 				}
 
 				if (!possibleEnPassant)
-					twoSquarePawn = -1;
+					currentState.PosiibleEnPassanVictimIndex = -1;
 			}
 
-			if (promotion != -1) {
-				Destroy(views[lastMove.From]);
-				views[lastMove.From] = pieceViewFactory.Create(new Piece(Piece.Types.Queen, pieces[lastMove.To].Color));
+			if (currentState.PromotedPawnIndex != -1) {
+				Destroy(views[currentState.Move.From]);
+				views[currentState.Move.From] = pieceViewFactory.Create(new Piece(Piece.Types.Queen, pieces[currentState.Move.To].Color));
 			}
-			promotion = -1;
+			currentState.PromotedPawnIndex = -1;
 
-			if (views[lastMove.To] != null) {
-				Destroy(views[lastMove.To]);
-				views[lastMove.To] = null;
+			if (views[currentState.Move.To] != null) {
+				Destroy(views[currentState.Move.To]);
+				views[currentState.Move.To] = null;
 			}
-			views[lastMove.To] = views[lastMove.From];
-			views[lastMove.From] = null;
-			int x = lastMove.To % 8;
-			int y = lastMove.To / 8;
+			views[currentState.Move.To] = views[currentState.Move.From];
+			views[currentState.Move.From] = null;
+			int x = currentState.Move.To % 8;
+			int y = currentState.Move.To / 8;
 			var newPosition = new Vector3 {
 				x = x - 4 + 0.5f,
-				y = views[lastMove.To].transform.position.y,
+				y = views[currentState.Move.To].transform.position.y,
 				z = y - 4 + 0.5f
 			};
-			views[lastMove.To].transform.position = newPosition;
+			views[currentState.Move.To].transform.position = newPosition;
 
-			if (castlingRookMove.IsValid) {
-				views[castlingRookMove.To] = views[castlingRookMove.From];
-				views[castlingRookMove.From] = null;
-				x = castlingRookMove.To % 8;
-				y = castlingRookMove.To / 8;
+			if (currentState.RookCastling.IsValid) {
+				views[currentState.RookCastling.To] = views[currentState.RookCastling.From];
+				views[currentState.RookCastling.From] = null;
+				x = currentState.RookCastling.To % 8;
+				y = currentState.RookCastling.To / 8;
 				newPosition = new Vector3 {
 					x = x - 4 + 0.5f,
-					y = views[castlingRookMove.To].transform.position.y,
+					y = views[currentState.RookCastling.To].transform.position.y,
 					z = y - 4 + 0.5f
 				};
-				views[castlingRookMove.To].transform.position = newPosition;
+				views[currentState.RookCastling.To].transform.position = newPosition;
 			}
-			castlingRookMove = new Move();
+			currentState.RookCastling = new Move();
 
-			isKingSelected = false;
-			undoIsWhiteKingCastlingAvaible = isWhiteKingCastlingAvaible;
-			undoIsWhiteQueenCastlingAvaible = isWhiteQueenCastlingAvaible;
-			undoIsBlackKingCastlingAvaible = isBlackKingCastlingAvaible;
-			undoIsBlackQueenCastlingAvaible = isBlackQueenCastlingAvaible;
+
 			GenerateMoves();
 			if (IsCheckmate()) {
 				if (moveColor == Piece.Colors.White)
@@ -647,11 +654,11 @@ namespace Chess {
 
 		private bool IsCheckmate() => moves.Count == 0;
 
-		private const int PAWN = 100;
-		private const int KNIGHT = 300;
-		private const int BISHOP = 300;
-		private const int ROOK = 500;
-		private const int QUEEN = 900;
+		private const int PAWN = 10;
+		private const int KNIGHT = 30;
+		private const int BISHOP = 30;
+		private const int ROOK = 50;
+		private const int QUEEN = 90;
 
 		private int CountColor(Piece.Colors color) {
 			int result = 0;
@@ -667,27 +674,52 @@ namespace Chess {
 		private int Evaluate() {
 			int whiteEvaluation = CountColor(Piece.Colors.White);
 			int blackEvaluation = CountColor(Piece.Colors.Black);
+			int perspective = moveColor == Piece.Colors.White ? -1 : 1;
+			return (whiteEvaluation - blackEvaluation) * perspective;
+		}
 
-			return blackEvaluation - whiteEvaluation;
+		private int Search(int depth, int alpha = -99999, int beta = 99999) {
+			if (depth == 0)
+				return Evaluate();
+
+			var newMoves = GenerateMoves();
+			if (newMoves.Count == 0) {
+				return -99999;
+			}
+
+			foreach (var move in newMoves) {
+				DoMove(move);
+				int evaluation = -Search(depth - 1, -beta, -alpha);
+				UndoMove();
+				if (evaluation >= beta) {
+					// Move was too good.
+					return beta;
+				}
+
+				alpha = Mathf.Max(alpha, evaluation);
+			}
+
+			return alpha;
 		}
 
 		private void MakeComputerMove() {
 			var bestMove = new Move();
-			var bestValue = int.MinValue;
+			var bestValue = -99999;
 
-			for (var i = 0; i < moves.Count; i++) {
-				var newGameMove = moves[i];
-				DoMove(newGameMove);
-				var boardValue = Evaluate();
-				UndoMove(newGameMove);
+			var avaibleMoves = moves;
+
+			foreach (var move in avaibleMoves) {
+				DoMove(move);
+				var boardValue = Search(2);
+				UndoMove();
 				if (boardValue > bestValue) {
 					bestValue = boardValue;
-					bestMove = newGameMove;
+					bestMove = move;
 				}
 			}
 
 			if (!bestMove.IsValid)
-				bestMove = moves[UnityEngine.Random.Range(0, moves.Count)];
+				bestMove = avaibleMoves[UnityEngine.Random.Range(0, avaibleMoves.Count)];
 
 			DoMove(bestMove);
 			ApplyMove();
