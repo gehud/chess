@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using System.Resources;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -200,7 +199,7 @@ namespace Chess {
 				} else {
 					if (move.From == 56)
 						state.IsBlackQueensideCastlingAvaible = false;
-					else if (move.From == 64)
+					else if (move.From == 63)
 						state.IsBlackKingsideCastlingAvaible = false;
 				}
 			} else if (piece.Type == PieceType.Pawn) {
@@ -231,6 +230,21 @@ namespace Chess {
 				}
 			} else {
 				state.TwoSquarePawn = -1;
+			}
+
+			// Capture the rook and test castling ability.
+			if (pieces[move.To].Type == PieceType.Rook) {
+				if (pieces[move.To].Color == PieceColor.White) {
+					if (move.To == 0)
+						state.IsWhiteQueensideCastlingAvaible = false;
+					else if (move.To == 7)
+						state.IsWhiteKingsideCastlingAvaible = false;
+				} else {
+					if (move.To == 56)
+						state.IsBlackQueensideCastlingAvaible = false;
+					else if (move.To == 63)
+						state.IsBlackKingsideCastlingAvaible = false;
+				}
 			}
 
 			state.Captured = pieces[move.To];

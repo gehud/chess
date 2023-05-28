@@ -93,11 +93,40 @@ namespace Chess {
 			return (whiteEvaluation - blackEvaluation) * perspective;
 		}
 
+		private int GetPieceValue(PieceType type) => type switch {
+			PieceType.Pawn => PAWN,
+			PieceType.Knight => KNIGHT,
+			PieceType.Bishop => BISHOP,
+			PieceType.Rook => ROOK,
+			PieceType.Queen => QUEEN,
+			_ => throw new Exception("Invalid piece type.")
+		};
+
+		private List<Move> OrderMoves(List<Move> moves) {
+			return moves.OrderBy(move => { 
+				int quess = 0;
+				var fromType = board.Pieces[move.From].Type;
+				var toType = board.Pieces[move.To].Type;
+
+				if (toType != PieceType.None) {
+					quess += 10 * GetPieceValue(toType) - GetPieceValue(fromType);
+				}
+
+				if (fromType == PieceType.Pawn) {
+					bool isWhite = board.Pieces[move.From].Color == PieceColor.White;
+					if (isWhite && move.To / Board.SIZE == 7 ||
+						!isWhite && move.To / Board.SIZE == 0)
+						quess += QUEEN;
+				}
+				return quess;
+			}).ToList();
+		}
+
 		private int Search(int depth, int alpha = NEGATIVE_INFINITY, int beta = POSITIVE_INFINITY) {
 			if (depth == 0)
 				return Evaluate();
 
-			var newMoves = board.GenerateMoves();
+			var newMoves = OrderMoves(board.GenerateMoves());
 			if (newMoves.Count == 0) {
 				return NEGATIVE_INFINITY;
 			}
@@ -126,7 +155,7 @@ namespace Chess {
 
 			foreach (var move in avaibleMoves) {
 				board.Move(move);
-				var boardValue = Search(2);
+				var boardValue = Search(3);
 				board.Undo();
 				if (boardValue > bestValue) {
 					bestValue = boardValue;
