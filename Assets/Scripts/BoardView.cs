@@ -15,6 +15,7 @@ namespace Chess {
 		[SerializeField] private GameObject cursor;
 		[SerializeField] private bool startPosition = true;
 		[SerializeField] private string fen;
+		[SerializeField] private bool playerWithComputer = true;
 
 		[Inject] private readonly IPieceViewFactory pieceViewFactory;
 
@@ -99,6 +100,7 @@ namespace Chess {
 			PieceType.Bishop => BISHOP,
 			PieceType.Rook => ROOK,
 			PieceType.Queen => QUEEN,
+			PieceType.King => POSITIVE_INFINITY,
 			_ => throw new Exception("Invalid piece type.")
 		};
 
@@ -118,6 +120,7 @@ namespace Chess {
 						!isWhite && move.To / Board.SIZE == 0)
 						quess += QUEEN;
 				}
+
 				return quess;
 			}).ToList();
 		}
@@ -147,7 +150,7 @@ namespace Chess {
 		}
 
 		private void MakeComputerMove() {
-			var stopwatch = Stopwatch.StartNew();
+			//var stopwatch = Stopwatch.StartNew();
 			Move? bestMove = null;
 			var bestValue = NEGATIVE_INFINITY;
 
@@ -155,7 +158,7 @@ namespace Chess {
 
 			foreach (var move in avaibleMoves) {
 				board.Move(move);
-				var boardValue = Search(3);
+				var boardValue = Search(2);
 				board.Undo();
 				if (boardValue > bestValue) {
 					bestValue = boardValue;
@@ -167,7 +170,7 @@ namespace Chess {
 
 			board.Move(bestMove.Value);
 			Apply();
-			UnityEngine.Debug.Log(stopwatch.ElapsedMilliseconds);
+			//UnityEngine.Debug.Log(stopwatch.ElapsedMilliseconds);
 		}
 
 		private void GameOverCheck() {
@@ -221,8 +224,8 @@ namespace Chess {
 
 				GameOverCheck();
 
-				//if (color == PieceColor.Black && !IsCheckmate())
-				//	MakeComputerMove();
+				if (playerWithComputer && board.MoveColor == PieceColor.Black && !board.IsCheckmate())
+					MakeComputerMove();
 			}
 		}
 

@@ -342,19 +342,22 @@ namespace Chess {
 			}
 
 			var twoSquarePawnColor = state.TwoSquarePawn != -1 ? pieces[state.TwoSquarePawn].Color : PieceColor.None;
-			bool enPassant = 
-				twoSquarePawnColor != PieceColor.None && 
-				twoSquarePawnColor != color && 
-				(squareIndex - state.TwoSquarePawn) switch {
-				1 => true,
-				-1 => true,
-				_ => false
-			};
+			bool enPassant =
+				twoSquarePawnColor != PieceColor.None &&
+				twoSquarePawnColor != color &&
+				Mathf.Abs(GetFile(squareIndex) - GetFile(state.TwoSquarePawn)) == 1 &&
+				(state.TwoSquarePawn - squareIndex) switch {
+					1 => true,
+					-1 => true,
+					_ => false
+				};
 
 			if (enPassant) {
+				var offsetDirection = color == PieceColor.White ? Direction.North : Direction.South;
+				int targetSquare = state.TwoSquarePawn + GetSquareOffset(offsetDirection);
+				// Bounds checking.
 				lock (moves) {
-					var offsetDirection = color == PieceColor.White ? Direction.North : Direction.South;
-					moves.Add(new Move(squareIndex, state.TwoSquarePawn + GetSquareOffset(offsetDirection)));
+					moves.Add(new Move(squareIndex, targetSquare));
 				}
 			}
 
