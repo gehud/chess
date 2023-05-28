@@ -15,20 +15,20 @@ namespace Chess {
 
 		public GameObject Create(Piece piece) {
 			var color = piece.Color;
-			if (color == Piece.Colors.None)
+			if (color == PieceColor.None)
 				throw new ArgumentException($"Missing view for piece color: {color}", "piece");
 
 			var instance = Instantiate(piece.Type switch {
-				Piece.Types.Pawn => pawn,
-				Piece.Types.Knight => knight,
-				Piece.Types.Bishop => bishop,
-				Piece.Types.Rook => rook,
-				Piece.Types.Queen => queen,
-				Piece.Types.King => king,
+				PieceType.Pawn => pawn,
+				PieceType.Knight => knight,
+				PieceType.Bishop => bishop,
+				PieceType.Rook => rook,
+				PieceType.Queen => queen,
+				PieceType.King => king,
 				_ => throw new ArgumentException($"Missing view for piece type {piece.Type}", "piece")
 			});
 
-			bool isBlack = color == Piece.Colors.Black;
+			bool isBlack = color == PieceColor.Black;
 			if (isBlack) {
 				instance.transform.Rotate(Vector3.up, 180.0f);
 				instance.GetComponent<Renderer>().material.color = blackColor;

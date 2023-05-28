@@ -1073,6 +1073,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7cae2b94e0b0ed540b501d67f0ac4a88, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  boardView: {fileID: 965931574298283534}
   panel: {fileID: 1397084784}
   winnerText: {fileID: 1968771582}
 --- !u!1 &1502302117

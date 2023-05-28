@@ -1,30 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
-using Zenject;
 
 namespace Chess {
-	public class Board : MonoBehaviour {
+	public class Board {
 		public const int SIZE = 8;
 		public const int AREA = SIZE * SIZE;
 
-		public static event Action<Piece.Colors> OnCheckmate;
+		public Piece[] Pieces => pieces;
 
-		public enum Directions {
-			North,
-			South,
-			West,
-			East,
-			NorthWest,
-			SouthEast,
-			NorthEast,
-			SouthWest,
-		}
+		private readonly Piece[] pieces = new Piece[AREA];
 
-		[Header("Navigation")]
-		[SerializeField] private GameObject cursor;
+		public PieceColor MoveColor => color;
+
+		private State state;
+		private PieceColor color = PieceColor.White;
 
 		private static readonly int[] squareOffsets = new int[] {
 			8, -8, -1, 1, 7, -7, 9, -9
@@ -32,25 +23,17 @@ namespace Chess {
 
 		private static readonly int[] moveLimits = new int[AREA * 8];
 
-		[Inject] private readonly IPieceViewFactory pieceViewFactory;
-
-		private readonly Piece[] pieces = new Piece[64];
-		private readonly GameObject[] views = new GameObject[64];
-
-		private int selected = -1;
-
-		private readonly List<GameObject> cursors = new();
+		public List<Move> Moves => moves;
 
 		private List<Move> moves;
 
-		private Piece.Colors moveColor = Piece.Colors.White;
-
 		private struct State {
-			public Piece Captured;
 			public Move Move;
-			public Move RookCastling;
-			public int PosiibleEnPassanVictimIndex;
-			public int PromotedPawnIndex;
+			public Piece Captured;
+			public Move CastlingRook;
+			public int TwoSquarePawn;
+			public int EnPassantCaptured;
+			public int PromotedPawn;
 			public bool IsWhiteKingsideCastlingAvaible;
 			public bool IsWhiteQueensideCastlingAvaible;
 			public bool IsBlackKingsideCastlingAvaible;
@@ -58,61 +41,201 @@ namespace Chess {
 		}
 
 		private readonly Stack<State> history = new();
-		private State currentState;
 
-		private void Awake() {
-			InitializeGame();
-			SpawnViews();
-			ComputeMoveLimits();
-			GenerateMoves();
-		}
+		private readonly Dictionary<char, PieceType> pieceSybmolMap = new() {
+			{ 'p', PieceType.Pawn },
+			{ 'n', PieceType.Knight },
+			{ 'b', PieceType.Bishop },
+			{ 'r', PieceType.Rook },
+			{ 'q', PieceType.Queen },
+			{ 'k', PieceType.King },
+		};
 
-		private void InitializeGame() {
-			pieces[0] = new Piece(Piece.Types.Rook, Piece.Colors.White);
-			pieces[1] = new Piece(Piece.Types.Knight, Piece.Colors.White);
-			pieces[2] = new Piece(Piece.Types.Bishop, Piece.Colors.White);
-			pieces[3] = new Piece(Piece.Types.Queen, Piece.Colors.White);
-			pieces[4] = new Piece(Piece.Types.King, Piece.Colors.White);
-			pieces[5] = new Piece(Piece.Types.Bishop, Piece.Colors.White);
-			pieces[6] = new Piece(Piece.Types.Knight, Piece.Colors.White);
-			pieces[7] = new Piece(Piece.Types.Rook, Piece.Colors.White);
-			pieces[8] = new Piece(Piece.Types.Pawn, Piece.Colors.White);
-			pieces[9] = new Piece(Piece.Types.Pawn, Piece.Colors.White);
-			pieces[10] = new Piece(Piece.Types.Pawn, Piece.Colors.White);
-			pieces[11] = new Piece(Piece.Types.Pawn, Piece.Colors.White);
-			pieces[12] = new Piece(Piece.Types.Pawn, Piece.Colors.White);
-			pieces[13] = new Piece(Piece.Types.Pawn, Piece.Colors.White);
-			pieces[14] = new Piece(Piece.Types.Pawn, Piece.Colors.White);
-			pieces[15] = new Piece(Piece.Types.Pawn, Piece.Colors.White);
+		private readonly string startFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-			pieces[63] = new Piece(Piece.Types.Rook, Piece.Colors.Black);
-			pieces[62] = new Piece(Piece.Types.Knight, Piece.Colors.Black);
-			pieces[61] = new Piece(Piece.Types.Bishop, Piece.Colors.Black);
-			pieces[60] = new Piece(Piece.Types.King, Piece.Colors.Black);
-			pieces[59] = new Piece(Piece.Types.Queen, Piece.Colors.Black);
-			pieces[58] = new Piece(Piece.Types.Bishop, Piece.Colors.Black);
-			pieces[57] = new Piece(Piece.Types.Knight, Piece.Colors.Black);
-			pieces[56] = new Piece(Piece.Types.Rook, Piece.Colors.Black);
-			pieces[55] = new Piece(Piece.Types.Pawn, Piece.Colors.Black);
-			pieces[54] = new Piece(Piece.Types.Pawn, Piece.Colors.Black);
-			pieces[53] = new Piece(Piece.Types.Pawn, Piece.Colors.Black);
-			pieces[52] = new Piece(Piece.Types.Pawn, Piece.Colors.Black);
-			pieces[51] = new Piece(Piece.Types.Pawn, Piece.Colors.Black);
-			pieces[50] = new Piece(Piece.Types.Pawn, Piece.Colors.Black);
-			pieces[49] = new Piece(Piece.Types.Pawn, Piece.Colors.Black);
-			pieces[48] = new Piece(Piece.Types.Pawn, Piece.Colors.Black);
-
-			currentState = new() {
+		public Board() {
+			Load(startFEN);
+			state = new() {
 				Captured = Piece.Empty,
 				Move = new Move(),
-				RookCastling = new Move(),
-				PosiibleEnPassanVictimIndex = -1,
-				PromotedPawnIndex = -1,
+				CastlingRook = new Move(),
+				TwoSquarePawn = -1,
+				EnPassantCaptured = -1,
+				PromotedPawn = -1,
 				IsWhiteKingsideCastlingAvaible = true,
 				IsWhiteQueensideCastlingAvaible = true,
 				IsBlackKingsideCastlingAvaible = true,
 				IsBlackQueensideCastlingAvaible = true
 			};
+			ComputeMoveLimits();
+		}
+
+		public void Load(string fen) {
+			var state = fen.Split(' ');
+			var board = state[0];
+			int file = 0, rank = 7;
+			foreach (var symbol in board) {
+				if (symbol == '/') {
+					file = 0;
+					--rank;
+				} else {
+					if (char.IsDigit(symbol)) {
+						file += (int)char.GetNumericValue(symbol);
+					} else {
+						var color = char.IsUpper(symbol) ? PieceColor.White : PieceColor.Black;
+						var type = pieceSybmolMap[char.ToLower(symbol)];
+						pieces[file + rank * SIZE] = new Piece(type, color);
+						++file;
+					}
+				}
+			}
+
+			color = char.Parse(state[1]) == 'w' ? PieceColor.White : PieceColor.Black;
+		}
+
+		public bool IsCheckmate() => moves.Count == 0;
+
+		public List<Move> GenerateDirtyMoves() {
+			moves = new List<Move>();
+			Parallel.For(0, AREA, (squareIndex) => {
+				if (pieces[squareIndex].Color == color)
+					GenerateMove(squareIndex);
+			});
+
+			return moves;
+		}
+
+		public List<Move> GenerateMoves() {
+			var presudoMoves = GenerateDirtyMoves();
+			var legalMoves = new List<Move>();
+			foreach (var move in presudoMoves) {
+				Move(move);
+				int kingIndex = -1;
+				Parallel.For(0, 64, (index, controll) => {
+					if (pieces[index].Type == PieceType.King && pieces[index].Color != color) {
+						kingIndex = index;
+						controll.Break();
+					}
+				});
+				var opopnentResoponses = GenerateDirtyMoves();
+				if (opopnentResoponses.AsParallel().Any(move => move.To == kingIndex)) {
+					// Illegal move.
+				} else {
+					legalMoves.Add(move);
+				}
+				Undo();
+			}
+			moves = legalMoves;
+			return moves;
+		}
+
+		public void Move(Move move) {
+			history.Push(state);
+			state.CastlingRook = new Move();
+			state.EnPassantCaptured = -1;
+			state.PromotedPawn = -1;
+			var piece = pieces[move.From];
+			if (piece.Type == PieceType.King) {
+				bool isWhite = piece.Color == PieceColor.White;
+				bool isKingCastling = move.To == move.From + GetSquareOffset(Direction.East) * 2;
+				bool isQueenCastling = move.To == move.From + GetSquareOffset(Direction.West) * 2;
+				if (isKingCastling) {
+					if (isWhite && state.IsWhiteKingsideCastlingAvaible || !isWhite && state.IsBlackKingsideCastlingAvaible) {
+						Move rookMove = new Move(
+							move.From + GetSquareOffset(Direction.East) * 3,
+							move.From + GetSquareOffset(Direction.East)
+						);
+						pieces[rookMove.To] = pieces[rookMove.From];
+						pieces[rookMove.From] = Piece.Empty;
+						state.CastlingRook = rookMove;
+					}
+				} else if (isQueenCastling) {
+					if (isWhite && state.IsWhiteQueensideCastlingAvaible || !isWhite && state.IsBlackQueensideCastlingAvaible) {
+						Move rookMove = new Move(
+							move.From + GetSquareOffset(Direction.West) * 4,
+							move.From + GetSquareOffset(Direction.West)
+						);
+						pieces[rookMove.To] = pieces[rookMove.From];
+						pieces[rookMove.From] = Piece.Empty;
+						state.CastlingRook = rookMove;
+					}
+				}
+				if (isWhite) {
+					state.IsWhiteKingsideCastlingAvaible = false;
+					state.IsWhiteQueensideCastlingAvaible = false;
+				} else {
+					state.IsBlackKingsideCastlingAvaible = false;
+					state.IsBlackQueensideCastlingAvaible = false;
+				}
+			} else if (piece.Type == PieceType.Rook) {
+				bool isWhite = piece.Color == PieceColor.White;
+				if (isWhite) {
+					if (move.From == 0)
+						state.IsWhiteQueensideCastlingAvaible = false;
+					else if (move.From == 7)
+						state.IsWhiteKingsideCastlingAvaible = false;
+				} else {
+					if (move.From == 56)
+						state.IsBlackQueensideCastlingAvaible = false;
+					else if (move.From == 64)
+						state.IsBlackKingsideCastlingAvaible = false;
+				}
+			} else if (piece.Type == PieceType.Pawn) {
+				bool isWhite = piece.Color == PieceColor.White;
+				int rank = GetRank(move.To);
+
+				// Promotion.
+				if (isWhite && rank == 7 || !isWhite && rank == 0) {
+					state.PromotedPawn = move.To;
+					pieces[move.From] = new Piece(PieceType.Queen, piece.Color);
+				}
+
+				int moveDifference = move.To - move.From;
+
+				// En Passant.
+				if (state.TwoSquarePawn != -1 &&
+					Mathf.Abs(move.To - state.TwoSquarePawn) == 8 &&
+					(isWhite && (moveDifference == 7 || moveDifference == 9) || !isWhite && 
+					(moveDifference == -7 || moveDifference == -9))) {
+					state.EnPassantCaptured = state.TwoSquarePawn;
+					pieces[state.EnPassantCaptured] = Piece.Empty;
+				}
+
+				if (moveDifference == 16 || moveDifference == -16) {
+					state.TwoSquarePawn = move.To;
+				} else {
+					state.TwoSquarePawn = -1;
+				}
+			} else {
+				state.TwoSquarePawn = -1;
+			}
+
+			state.Captured = pieces[move.To];
+			pieces[move.To] = pieces[move.From];
+			pieces[move.From] = Piece.Empty;
+			state.Move = move;
+			SwapMoveColor();
+		}
+
+		public void Undo() {
+			if (state.EnPassantCaptured != -1) {
+				pieces[state.EnPassantCaptured] = new Piece(PieceType.Pawn, color);
+			}
+
+			if (state.CastlingRook.IsValid) {
+				pieces[state.CastlingRook.From] = pieces[state.CastlingRook.To];
+				pieces[state.CastlingRook.To] = Piece.Empty;
+			}
+
+			SwapMoveColor();
+
+			if (state.PromotedPawn != -1) {
+				pieces[state.Move.To] = new Piece(PieceType.Pawn, color);
+			}
+
+			pieces[state.Move.From] = pieces[state.Move.To];
+			pieces[state.Move.To] = state.Captured;
+			state = history.Pop();
 		}
 
 		private void ComputeMoveLimits() {
@@ -120,10 +243,10 @@ namespace Chess {
 				int file = index % SIZE;
 				int rank = index / SIZE;
 
-				int northSquareCount = 7 - rank;
+				int northSquareCount = SIZE - 1 - rank;
 				int southSquareCount = rank;
 				int westSquareCount = file;
-				int eastSquareCount = 7 - file;
+				int eastSquareCount = SIZE - 1 - file;
 
 				moveLimits[index + AREA * 0] = northSquareCount;
 				moveLimits[index + AREA * 1] = southSquareCount;
@@ -148,44 +271,18 @@ namespace Chess {
 			return moveLimits[squareIndex + directionindex * AREA];
 		}
 
-		private int GetSquareOffset(Directions direction) {
+		private int GetSquareOffset(Direction direction) {
 			return squareOffsets[(int)direction];
-		}
-
-		private void SpawnView(int squareIndex) {
-			Piece piece = pieces[squareIndex];
-
-			if (piece == Piece.Empty)
-				return;
-
-			int x = squareIndex % 8;
-			int y = squareIndex / 8;
-
-			var view = pieceViewFactory.Create(piece);
-
-			view.transform.position = new Vector3 {
-				x = x - 4 + 0.5f,
-				y = view.transform.position.y,
-				z = y - 4 + 0.5f
-			};
-
-			views[squareIndex] = view;
-		}
-
-		private void SpawnViews() {
-			for (int squareIndex = 0; squareIndex < 64; squareIndex++) {
-				SpawnView(squareIndex);
-			}
 		}
 
 		private void GeneratePawnMove(int squareIndex) {
 			var color = pieces[squareIndex].Color;
 
-			bool isInVertivalBounds = color == Piece.Colors.White ? GetRank(squareIndex) < 7 : GetRank(squareIndex) > 0;
+			bool isInVertivalBounds = color == PieceColor.White ? GetRank(squareIndex) < 7 : GetRank(squareIndex) > 0;
 
 			if (isInVertivalBounds && GetFile(squareIndex) > 0) {
-				var leftDiagonalDirection = color == Piece.Colors.White ? 
-					Directions.NorthWest : Directions.SouthWest;
+				var leftDiagonalDirection = color == PieceColor.White ?
+					Direction.NorthWest : Direction.SouthWest;
 				int targetSquareIndex = squareIndex + GetSquareOffset(leftDiagonalDirection);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece != Piece.Empty && targetPiece.Color != color) {
@@ -196,8 +293,8 @@ namespace Chess {
 			}
 
 			if (isInVertivalBounds && GetFile(squareIndex) < 7) {
-				var rightDiagonalDirection = color == Piece.Colors.White ? 
-					Directions.NorthEast : Directions.SouthEast;
+				var rightDiagonalDirection = color == PieceColor.White ?
+					Direction.NorthEast : Direction.SouthEast;
 				var targetSquareIndex = squareIndex + GetSquareOffset(rightDiagonalDirection);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece != Piece.Empty && targetPiece.Color != color) {
@@ -207,7 +304,11 @@ namespace Chess {
 				}
 			}
 
-			bool enPassant = (squareIndex - currentState.PosiibleEnPassanVictimIndex) switch {
+			var twoSquarePawnColor = state.TwoSquarePawn != -1 ? pieces[state.TwoSquarePawn].Color : PieceColor.None;
+			bool enPassant = 
+				twoSquarePawnColor != PieceColor.None && 
+				twoSquarePawnColor != color && 
+				(squareIndex - state.TwoSquarePawn) switch {
 				1 => true,
 				-1 => true,
 				_ => false
@@ -215,14 +316,14 @@ namespace Chess {
 
 			if (enPassant) {
 				lock (moves) {
-					var offsetDirection = color == Piece.Colors.White ? Directions.North : Directions.South;
-					moves.Add(new Move(squareIndex, currentState.PosiibleEnPassanVictimIndex + GetSquareOffset(offsetDirection)));
+					var offsetDirection = color == PieceColor.White ? Direction.North : Direction.South;
+					moves.Add(new Move(squareIndex, state.TwoSquarePawn + GetSquareOffset(offsetDirection)));
 				}
 			}
 
-			int directionOffsetIndex = color == Piece.Colors.White ? 0 : 1;
-			int avaibleSquares = (color == Piece.Colors.White && GetRank(squareIndex) == 1 
-				|| color == Piece.Colors.Black && GetRank(squareIndex) == 6) ? 2 : 1;
+			int directionOffsetIndex = color == PieceColor.White ? 0 : 1;
+			int avaibleSquares = (color == PieceColor.White && GetRank(squareIndex) == 1
+				|| color == PieceColor.Black && GetRank(squareIndex) == 6) ? 2 : 1;
 			for (int i = 0; i < Mathf.Min(GetMoveLimit(squareIndex, directionOffsetIndex), avaibleSquares); i++) {
 				var targetSquareIndex = squareIndex + squareOffsets[directionOffsetIndex] * (i + 1);
 				var targetPiece = pieces[targetSquareIndex];
@@ -242,7 +343,7 @@ namespace Chess {
 			var color = pieces[squareIndex].Color;
 
 			if (file > 1 && rank > 0) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Directions.SouthWest) * 2 + GetSquareOffset(Directions.North);
+				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.SouthWest) * 2 + GetSquareOffset(Direction.North);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece.Color != color) {
 					lock (moves) {
@@ -252,7 +353,7 @@ namespace Chess {
 			}
 
 			if (file > 0 && rank > 1) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Directions.SouthWest) * 2 + GetSquareOffset(Directions.East);
+				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.SouthWest) * 2 + GetSquareOffset(Direction.East);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece.Color != color) {
 					lock (moves) {
@@ -262,7 +363,7 @@ namespace Chess {
 			}
 
 			if (file > 0 && rank < 6) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Directions.NorthWest) * 2 + GetSquareOffset(Directions.East);
+				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.NorthWest) * 2 + GetSquareOffset(Direction.East);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece.Color != color) {
 					lock (moves) {
@@ -272,7 +373,7 @@ namespace Chess {
 			}
 
 			if (file > 1 && rank < 7) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Directions.NorthWest) * 2 + GetSquareOffset(Directions.South);
+				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.NorthWest) * 2 + GetSquareOffset(Direction.South);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece.Color != color) {
 					lock (moves) {
@@ -282,7 +383,7 @@ namespace Chess {
 			}
 
 			if (file < 7 && rank < 6) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Directions.NorthEast) * 2 + GetSquareOffset(Directions.West);
+				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.NorthEast) * 2 + GetSquareOffset(Direction.West);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece.Color != color) {
 					lock (moves) {
@@ -292,7 +393,7 @@ namespace Chess {
 			}
 
 			if (file < 6 && rank < 7) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Directions.NorthEast) * 2 + GetSquareOffset(Directions.South);
+				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.NorthEast) * 2 + GetSquareOffset(Direction.South);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece.Color != color) {
 					lock (moves) {
@@ -302,7 +403,7 @@ namespace Chess {
 			}
 
 			if (file < 6 && rank > 0) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Directions.SouthEast) * 2 + GetSquareOffset(Directions.North);
+				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.SouthEast) * 2 + GetSquareOffset(Direction.North);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece.Color != color) {
 					lock (moves) {
@@ -313,7 +414,7 @@ namespace Chess {
 			}
 
 			if (file < 7 && rank > 1) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Directions.SouthEast) * 2 + GetSquareOffset(Directions.West);
+				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.SouthEast) * 2 + GetSquareOffset(Direction.West);
 				var targetPiece = pieces[targetSquareIndex];
 				if (targetPiece.Color != color) {
 					lock (moves) {
@@ -327,11 +428,11 @@ namespace Chess {
 			var color = pieces[squareIndex].Color;
 
 			// Castling
-			if (color == Piece.Colors.White) {
-				if (currentState.IsWhiteKingsideCastlingAvaible) {
+			if (color == PieceColor.White) {
+				if (state.IsWhiteKingsideCastlingAvaible) {
 					bool isWhiteKingCastlingPossigle = true;
 					for (int i = 1; i <= 2; i++) {
-						if (!pieces[squareIndex + GetSquareOffset(Directions.East) * i].IsEmpty) {
+						if (!pieces[squareIndex + GetSquareOffset(Direction.East) * i].IsEmpty) {
 							isWhiteKingCastlingPossigle = false;
 							break;
 						}
@@ -339,15 +440,15 @@ namespace Chess {
 
 					if (isWhiteKingCastlingPossigle) {
 						lock (moves) {
-							moves.Add(new Move(squareIndex, squareIndex + GetSquareOffset(Directions.East) * 2));
+							moves.Add(new Move(squareIndex, squareIndex + GetSquareOffset(Direction.East) * 2));
 						}
 					}
 				}
 
-				if (currentState.IsWhiteQueensideCastlingAvaible) {
+				if (state.IsWhiteQueensideCastlingAvaible) {
 					bool isWhiteQueenCastlingPossigle = true;
 					for (int i = 1; i <= 3; i++) {
-						if (!pieces[squareIndex + GetSquareOffset(Directions.West) * i].IsEmpty) {
+						if (!pieces[squareIndex + GetSquareOffset(Direction.West) * i].IsEmpty) {
 							isWhiteQueenCastlingPossigle = false;
 							break;
 						}
@@ -355,15 +456,15 @@ namespace Chess {
 
 					if (isWhiteQueenCastlingPossigle) {
 						lock (moves) {
-							moves.Add(new Move(squareIndex, squareIndex + GetSquareOffset(Directions.West) * 2));
+							moves.Add(new Move(squareIndex, squareIndex + GetSquareOffset(Direction.West) * 2));
 						}
 					}
 				}
 			} else {
-				if (currentState.IsBlackKingsideCastlingAvaible) {
+				if (state.IsBlackKingsideCastlingAvaible) {
 					bool isBlackKingCastlingPossigle = true;
 					for (int i = 1; i <= 2; i++) {
-						if (!pieces[squareIndex + GetSquareOffset(Directions.East) * i].IsEmpty) {
+						if (!pieces[squareIndex + GetSquareOffset(Direction.East) * i].IsEmpty) {
 							isBlackKingCastlingPossigle = false;
 							break;
 						}
@@ -371,16 +472,16 @@ namespace Chess {
 
 					if (isBlackKingCastlingPossigle) {
 						lock (moves) {
-							moves.Add(new Move(squareIndex, squareIndex + GetSquareOffset(Directions.East) * 2));
+							moves.Add(new Move(squareIndex, squareIndex + GetSquareOffset(Direction.East) * 2));
 						}
 					}
 				}
 
 
-				if (currentState.IsBlackQueensideCastlingAvaible) {
+				if (state.IsBlackQueensideCastlingAvaible) {
 					bool isBlackQueenCastlingPossigle = true;
 					for (int i = 1; i <= 3; i++) {
-						if (!pieces[squareIndex + GetSquareOffset(Directions.West) * i].IsEmpty) {
+						if (!pieces[squareIndex + GetSquareOffset(Direction.West) * i].IsEmpty) {
 							isBlackQueenCastlingPossigle = false;
 							break;
 						}
@@ -388,7 +489,7 @@ namespace Chess {
 
 					if (isBlackQueenCastlingPossigle) {
 						lock (moves) {
-							moves.Add(new Move(squareIndex, squareIndex + GetSquareOffset(Directions.West) * 2));
+							moves.Add(new Move(squareIndex, squareIndex + GetSquareOffset(Direction.West) * 2));
 						}
 					}
 				}
@@ -415,8 +516,8 @@ namespace Chess {
 			var type = piece.Type;
 
 			var color = piece.Color;
-			int startDirectionIndex = type == Piece.Types.Bishop ? 4 : 0;
-			int endDirectionIndex = type == Piece.Types.Rook ? 4 : 8;
+			int startDirectionIndex = type == PieceType.Bishop ? 4 : 0;
+			int endDirectionIndex = type == PieceType.Rook ? 4 : 8;
 
 			for (int directionIndex = startDirectionIndex; directionIndex < endDirectionIndex; directionIndex++) {
 				for (int i = 0; i < GetMoveLimit(squareIndex, directionIndex); i++) {
@@ -432,11 +533,18 @@ namespace Chess {
 					}
 
 					// Stop on oponent.
-					if (targetPiece.Color != Piece.Colors.None && targetPiece.Color != color)
+					if (targetPiece.Color != PieceColor.None && targetPiece.Color != color)
 						break;
 				}
 			}
 		}
+
+		private bool IsSliding(PieceType type) => type switch {
+			PieceType.Bishop => true,
+			PieceType.Rook => true,
+			PieceType.Queen => true,
+			_ => false
+		};
 
 		private void GenerateMove(int squareIndex) {
 			var piece = pieces[squareIndex];
@@ -444,351 +552,20 @@ namespace Chess {
 			if (piece == Piece.Empty)
 				return;
 
-			if (piece.IsSliding)
+			var type = piece.Type;
+			if (IsSliding(type)) {
 				GenerateSlidingMoves(squareIndex);
-			else {
-				var type = piece.Type;
-				if (type == Piece.Types.Pawn) {
-					GeneratePawnMove(squareIndex);
-				} else if (type == Piece.Types.Knight) {
-					GenerateKnightMove(squareIndex);
-				} else if (type == Piece.Types.King) {
-					GenerateKingMove(squareIndex);
-				}
+			} else if (type == PieceType.Pawn) {
+				GeneratePawnMove(squareIndex);
+			} else if (type == PieceType.Knight) {
+				GenerateKnightMove(squareIndex);
+			} else if (type == PieceType.King) {
+				GenerateKingMove(squareIndex);
 			}
-		}
-
-		private List<Move> GenerateDirtyMoves() {
-			moves = new List<Move>();
-			Parallel.For(0, 64, (squareIndex) => {
-				if (pieces[squareIndex].Color == moveColor)
-					GenerateMove(squareIndex);
-			});
-
-			return moves;
 		}
 
 		private void SwapMoveColor() {
-			moveColor = moveColor == Piece.Colors.White ? Piece.Colors.Black : Piece.Colors.White;
-		}
-
-		private List<Move> GenerateMoves() {
-			var presudoMoves = GenerateDirtyMoves();
-			var legalMoves = new List<Move>();
-			foreach (var move in presudoMoves) {
-				DoMove(move);
-				int kingIndex = -1;
-				Parallel.For(0, 64, (index, controll) => {
-					if (pieces[index].Type == Piece.Types.King && pieces[index].Color != moveColor) {
-						kingIndex = index;
-						controll.Break();
-					}
-				});
-				var opopnentResoponses = GenerateDirtyMoves();
-				if (opopnentResoponses.AsParallel().Any(move => move.To == kingIndex)) {
-					// Illegal move.
-				} else {
-					legalMoves.Add(move);
-				}
-				UndoMove();
-			}
-			moves = legalMoves;
-			return moves;
-		}
-
-		private void DoMove(Move move) {
-			history.Push(currentState);
-			var piece = pieces[move.From];
-			if (piece.Type == Piece.Types.King) {
-				bool isWhite = piece.Color == Piece.Colors.White;
-				bool isKingCastling = move.To == move.From + GetSquareOffset(Directions.East) * 2;
-				bool isQueenCastling = move.To == move.From + GetSquareOffset(Directions.West) * 2;
-				if (isKingCastling) {
-					if (isWhite && currentState.IsWhiteKingsideCastlingAvaible || !isWhite && currentState.IsBlackKingsideCastlingAvaible) {
-						Move rookMove = new Move(
-							move.From + GetSquareOffset(Directions.East) * 3,
-							move.From + GetSquareOffset(Directions.East)
-						);
-						pieces[rookMove.To] = pieces[rookMove.From];
-						pieces[rookMove.From] = Piece.Empty;
-						currentState.RookCastling = rookMove;
-					}
-				} else if (isQueenCastling) {
-					if (isWhite && currentState.IsWhiteQueensideCastlingAvaible || !isWhite && currentState.IsBlackQueensideCastlingAvaible) {
-						Move rookMove = new Move(
-							move.From + GetSquareOffset(Directions.West) * 4,
-							move.From + GetSquareOffset(Directions.West)
-						);
-						pieces[rookMove.To] = pieces[rookMove.From];
-						pieces[rookMove.From] = Piece.Empty;
-						currentState.RookCastling = rookMove;
-					}
-				}
-				if (isWhite) {
-					currentState.IsWhiteKingsideCastlingAvaible = false;
-					currentState.IsWhiteQueensideCastlingAvaible = false;
-				} else {
-					currentState.IsBlackKingsideCastlingAvaible = false;
-					currentState.IsBlackQueensideCastlingAvaible = false;
-				}
-			} else if (piece.Type == Piece.Types.Rook) {
-				bool isWhite = piece.Color == Piece.Colors.White;
-				if (isWhite) {
-					if (move.From == 0)
-						currentState.IsWhiteQueensideCastlingAvaible = false;
-					else if (move.From == 7)
-						currentState.IsWhiteKingsideCastlingAvaible = false;
-				} else {
-					if (move.From == 56)
-						currentState.IsBlackQueensideCastlingAvaible = false;
-					else if (move.From == 64)
-						currentState.IsBlackKingsideCastlingAvaible = false;
-				}
-			} else if (piece.Type == Piece.Types.Pawn) {
-				bool isWhite = piece.Color == Piece.Colors.White;
-				int rank = GetRank(move.To);
-				if (isWhite && rank == 7 || !isWhite && rank == 0) {
-					currentState.PromotedPawnIndex = move.To;
-					pieces[move.From] = new Piece(Piece.Types.Queen, piece.Color);
-				}
-			}
-
-			currentState.Captured = pieces[move.To];
-			pieces[move.To] = pieces[move.From];
-			pieces[move.From] = Piece.Empty;
-			currentState.Move = move;
-			SwapMoveColor();
-		}
-
-		private void UndoMove() {
-			SwapMoveColor();
-
-			if (currentState.RookCastling.IsValid) {
-				pieces[currentState.RookCastling.From] = pieces[currentState.RookCastling.To];
-				pieces[currentState.RookCastling.To] = Piece.Empty;
-			}
-
-			if (currentState.PromotedPawnIndex != -1) {
-				pieces[currentState.Move.To] = new Piece(Piece.Types.Pawn, moveColor);
-			}
-
-			pieces[currentState.Move.From] = pieces[currentState.Move.To];
-			pieces[currentState.Move.To] = currentState.Captured;
-			currentState = history.Pop();
-		}
-
-		private void ApplyMove() {
-			history.Clear();
-			if (pieces[currentState.Move.To].Type == Piece.Types.Pawn) {
-				bool possibleEnPassant = false;
-
-				if (Mathf.Abs(currentState.Move.To - currentState.Move.From) > 9) {
-					currentState.PosiibleEnPassanVictimIndex = currentState.Move.To;
-					possibleEnPassant = true;
-				}
-
-				bool enPassant = (currentState.Move.To - currentState.PosiibleEnPassanVictimIndex) switch { 
-					8 => true,
-					-8 => true,
-					_ => false
-				} && (currentState.Move.To - currentState.Move.From) switch { 
-					7 => true,
-					-7 => true,
-					9 => true,
-					-9 => true,
-					_ => false
-				};
-
-				if (enPassant) {
-					Destroy(views[currentState.PosiibleEnPassanVictimIndex]);
-				}
-
-				if (!possibleEnPassant)
-					currentState.PosiibleEnPassanVictimIndex = -1;
-			}
-
-			if (currentState.PromotedPawnIndex != -1) {
-				Destroy(views[currentState.Move.From]);
-				views[currentState.Move.From] = pieceViewFactory.Create(new Piece(Piece.Types.Queen, pieces[currentState.Move.To].Color));
-			}
-			currentState.PromotedPawnIndex = -1;
-
-			if (views[currentState.Move.To] != null) {
-				Destroy(views[currentState.Move.To]);
-				views[currentState.Move.To] = null;
-			}
-			views[currentState.Move.To] = views[currentState.Move.From];
-			views[currentState.Move.From] = null;
-			int x = currentState.Move.To % 8;
-			int y = currentState.Move.To / 8;
-			var newPosition = new Vector3 {
-				x = x - 4 + 0.5f,
-				y = views[currentState.Move.To].transform.position.y,
-				z = y - 4 + 0.5f
-			};
-			views[currentState.Move.To].transform.position = newPosition;
-
-			if (currentState.RookCastling.IsValid) {
-				views[currentState.RookCastling.To] = views[currentState.RookCastling.From];
-				views[currentState.RookCastling.From] = null;
-				x = currentState.RookCastling.To % 8;
-				y = currentState.RookCastling.To / 8;
-				newPosition = new Vector3 {
-					x = x - 4 + 0.5f,
-					y = views[currentState.RookCastling.To].transform.position.y,
-					z = y - 4 + 0.5f
-				};
-				views[currentState.RookCastling.To].transform.position = newPosition;
-			}
-			currentState.RookCastling = new Move();
-
-
-			GenerateMoves();
-			if (IsCheckmate()) {
-				if (moveColor == Piece.Colors.White)
-					OnCheckmate?.Invoke(Piece.Colors.Black);
-				else
-					OnCheckmate?.Invoke(Piece.Colors.White);
-			}
-		}
-
-		private bool IsCheckmate() => moves.Count == 0;
-
-		private const int PAWN = 10;
-		private const int KNIGHT = 30;
-		private const int BISHOP = 30;
-		private const int ROOK = 50;
-		private const int QUEEN = 90;
-
-		private int CountColor(Piece.Colors color) {
-			int result = 0;
-			var pieces = this.pieces.AsParallel();
-			result += pieces.Count(piece => piece.Type == Piece.Types.Pawn && piece.Color == color) * PAWN;
-			result += pieces.Count(piece => piece.Type == Piece.Types.Knight && piece.Color == color) * KNIGHT;
-			result += pieces.Count(piece => piece.Type == Piece.Types.Bishop && piece.Color == color) * BISHOP;
-			result += pieces.Count(piece => piece.Type == Piece.Types.Rook && piece.Color == color) * ROOK;
-			result += pieces.Count(piece => piece.Type == Piece.Types.Queen && piece.Color == color) * QUEEN;
-			return result;
-		}
-
-		private int Evaluate() {
-			int whiteEvaluation = CountColor(Piece.Colors.White);
-			int blackEvaluation = CountColor(Piece.Colors.Black);
-			int perspective = moveColor == Piece.Colors.White ? -1 : 1;
-			return (whiteEvaluation - blackEvaluation) * perspective;
-		}
-
-		private int Search(int depth, int alpha = -99999, int beta = 99999) {
-			if (depth == 0)
-				return Evaluate();
-
-			var newMoves = GenerateMoves();
-			if (newMoves.Count == 0) {
-				return -99999;
-			}
-
-			foreach (var move in newMoves) {
-				DoMove(move);
-				int evaluation = -Search(depth - 1, -beta, -alpha);
-				UndoMove();
-				if (evaluation >= beta) {
-					// Move was too good.
-					return beta;
-				}
-
-				alpha = Mathf.Max(alpha, evaluation);
-			}
-
-			return alpha;
-		}
-
-		private void MakeComputerMove() {
-			var bestMove = new Move();
-			var bestValue = -99999;
-
-			var avaibleMoves = moves;
-
-			foreach (var move in avaibleMoves) {
-				DoMove(move);
-				var boardValue = Search(2);
-				UndoMove();
-				if (boardValue > bestValue) {
-					bestValue = boardValue;
-					bestMove = move;
-				}
-			}
-
-			if (!bestMove.IsValid)
-				bestMove = avaibleMoves[UnityEngine.Random.Range(0, avaibleMoves.Count)];
-
-			DoMove(bestMove);
-			ApplyMove();
-		}
-
-		private void OnSquare(int sqareIndex) {
-			if (selected == sqareIndex || sqareIndex == -1) {
-				selected = -1;
-				foreach (var instance in cursors)
-					Destroy(instance);
-				cursors.Clear();
-				return;
-			}
-
-			if (selected == -1 && pieces[sqareIndex].Color == moveColor) {			
-				selected = sqareIndex;
-				int x = sqareIndex % 8;
-				int y = sqareIndex / 8;
-				var cursorPosition = new Vector3 {
-					x = x - 4 + 0.5f,
-					y = cursor.transform.position.y,
-					z = y - 4 + 0.5f
-				};
-				cursors.Add(Instantiate(cursor, cursorPosition, Quaternion.identity));
-				foreach (var move in moves.AsParallel().Where(move => move.From == selected)) {
-					x = move.To % 8;
-					y = move.To / 8;
-					cursorPosition = new Vector3 {
-						x = x - 4 + 0.5f,
-						y = cursor.transform.position.y,
-						z = y - 4 + 0.5f
-					};
-					cursors.Add(Instantiate(cursor, cursorPosition, Quaternion.identity));
-				}
-			} else if (moves.AsParallel().Any(move => move.From == selected && move.To == sqareIndex)) {
-				if (IsCheckmate())
-					return;
-
-				DoMove(new Move(selected, sqareIndex));
-				ApplyMove();
-				foreach (var instance in cursors)
-					Destroy(instance);
-				cursors.Clear();
-				selected = -1;
-
-				if (moveColor == Piece.Colors.Black && !IsCheckmate())
-					MakeComputerMove();
-			}
-		}
-
-		private void Update() {
-			if (!Input.GetMouseButtonDown(0))
-				return;
-
-			var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-			if (!Physics.Raycast(ray, out RaycastHit hitInfo)) {
-				OnSquare(-1);
-				return;
-			}
-
-			var point = hitInfo.point;
-
-			var square = Vector3Int.FloorToInt(point);
-			if (square.x < -4 || square.x > 3 || square.z < -4 || square.z > 3) {
-				OnSquare(-1);
-				return;
-			}
-
-			OnSquare((square.z + 4) * 8 + square.x + 4);
+			color = color == PieceColor.White ? PieceColor.Black : PieceColor.White;
 		}
 	}
 }

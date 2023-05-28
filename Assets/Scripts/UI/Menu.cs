@@ -4,6 +4,8 @@ using UnityEngine;
 namespace Chess.UI {
 	public class Menu : MonoBehaviour {
 		[SerializeField]
+		private BoardView boardView;
+		[SerializeField]
 		private GameObject panel;
 		[SerializeField]
 		private TMP_Text winnerText;
@@ -17,21 +19,21 @@ namespace Chess.UI {
 		}
 
 		private void OnEnable() {
-			Board.OnCheckmate += OnCheckmate;
+			boardView.OnCheckmate += OnCheckmate;
 		}
 
 		private void OnDisable() {
-			Board.OnCheckmate -= OnCheckmate;
+			boardView.OnCheckmate -= OnCheckmate;
 		}
 
-		private void OnCheckmate(Piece.Colors color) {
+		private void OnCheckmate(PieceColor color) {
 			panel.SetActive(true);
 			winnerText.gameObject.SetActive(true);
 			switch (color) {
-				case Piece.Colors.White:
+				case PieceColor.White:
 					winnerText.text = "White Wins!";
 					break;
-				case Piece.Colors.Black:
+				case PieceColor.Black:
 					winnerText.text = "Black Wins!";
 					break;
 			}

@@ -1,55 +1,32 @@
 ﻿namespace Chess {
 	public readonly struct Piece {
-		public enum Types {
-			None = 0,
-			Pawn = 1,
-			Knight = 2,
-			Bishop = 3,
-			Rook = 4,
-			Queen = 5,
-			King = 6,
-		}
+		public static Piece Empty => new(PieceType.None, PieceColor.None);
 
-		public enum Colors {
-			None = 0,
-			White = 8,
-			Black = 16,
-		}
+		public PieceType Type => (PieceType)(representation & 0b111);
 
-		public static Piece Empty => new(Types.None, Colors.None);
-
-		public Types Type => (Types)(representation & 0b111);
-
-		public Colors Color => (Colors)(representation & 0b11000);
+		public PieceColor Color => (PieceColor)(representation & 0b11000);
 
 		public bool IsEmpty => this == Empty;
 
-		public bool IsSliding => Type switch {
-			Types.Bishop => true,
-			Types.Rook => true,
-			Types.Queen => true,
-			_ => false
-		};
+		private readonly byte representation;
 
-		private readonly int representation;
-
-		public Piece(Types type, Colors color) {
-			representation = (int)type | (int)color;
+		public Piece(PieceType type, PieceColor color) {
+			representation = (byte)((byte)type | (byte)color);
 		}
 
 		public static bool operator==(Piece left, Piece right) {
-			return left.representation == right.representation;	
+			return left.representation == right.representation;
 		}
 
 		public static bool operator!=(Piece left, Piece right) {
 			return left.representation != right.representation;
 		}
 
-		public override bool Equals(object obj) {
-			if (obj is not Piece piece)
+		public override bool Equals(object @object) {
+			if (@object is not Piece piece)
 				return false;
 
-			return this.representation == piece.representation;
+			return representation == piece.representation;
 		}
 
 		public override int GetHashCode() {
