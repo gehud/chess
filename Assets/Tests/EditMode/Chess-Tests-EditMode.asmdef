@@ -1,12 +1,14 @@
 {
-    "name": "Chess-Tests-PlayMode",
-    "rootNamespace": "",
+    "name": "Chess-Tests-EditMode",
+    "rootNamespace": "Chess.Tests.EditMode",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
         "Chess"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": true,

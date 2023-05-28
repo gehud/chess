@@ -1374,6 +1374,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cursor: {fileID: 4069888993260134568, guid: 84433c1e68aeff842b37265814a9c470, type: 3}
+  startPosition: 1
+  fen: rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8
 --- !u!23 &2158281015353206717
 MeshRenderer:
   m_ObjectHideFlags: 0

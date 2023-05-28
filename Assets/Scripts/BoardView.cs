@@ -13,6 +13,8 @@ namespace Chess {
 
 		[Header("Navigation")]
 		[SerializeField] private GameObject cursor;
+		[SerializeField] private bool startPosition = true;
+		[SerializeField] private string fen;
 
 		[Inject] private readonly IPieceViewFactory pieceViewFactory;
 
@@ -23,6 +25,10 @@ namespace Chess {
 		private readonly List<GameObject> cursors = new();
 
 		private void Awake() {
+			if (startPosition)
+				board.Start();
+			else
+				board.Load(fen);
 			Apply();
 		}
 

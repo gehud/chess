@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Resources;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -54,7 +55,6 @@ namespace Chess {
 		private readonly string startFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 		public Board() {
-			Load(startFEN);
 			state = new() {
 				Captured = Piece.Empty,
 				Move = new Move(),
@@ -62,12 +62,16 @@ namespace Chess {
 				TwoSquarePawn = -1,
 				EnPassantCaptured = -1,
 				PromotedPawn = -1,
-				IsWhiteKingsideCastlingAvaible = true,
-				IsWhiteQueensideCastlingAvaible = true,
-				IsBlackKingsideCastlingAvaible = true,
-				IsBlackQueensideCastlingAvaible = true
+				IsWhiteKingsideCastlingAvaible = false,
+				IsWhiteQueensideCastlingAvaible = false,
+				IsBlackKingsideCastlingAvaible = false,
+				IsBlackQueensideCastlingAvaible = false
 			};
 			ComputeMoveLimits();
+		}
+
+		public void Start() {
+			Load(startFEN);
 		}
 
 		public void Load(string fen) {
@@ -91,11 +95,32 @@ namespace Chess {
 			}
 
 			color = char.Parse(state[1]) == 'w' ? PieceColor.White : PieceColor.Black;
+
+			var castlings = state[2];
+			if (castlings != "-") {
+				foreach (var castling in castlings) {
+					if (castling == 'K')
+						this.state.IsWhiteKingsideCastlingAvaible = true;
+					else if (castling == 'k')
+						this.state.IsBlackKingsideCastlingAvaible = true;
+					else if (castling == 'Q')
+						this.state.IsWhiteQueensideCastlingAvaible = true;
+					else if (castling == 'q')
+						this.state.IsBlackQueensideCastlingAvaible = true;
+				}
+			}
+
+			var twoSquarePawnKey = state[3];
+			if (twoSquarePawnKey != "-") {
+				file = twoSquarePawnKey[0] - 'a';
+				rank = (int)char.GetNumericValue(twoSquarePawnKey[1]) - 1;
+				this.state.TwoSquarePawn = file + rank * SIZE;
+			}
 		}
 
 		public bool IsCheckmate() => moves.Count == 0;
 
-		public List<Move> GenerateDirtyMoves() {
+		private List<Move> GeneratePresudoMoves() {
 			moves = new List<Move>();
 			Parallel.For(0, AREA, (squareIndex) => {
 				if (pieces[squareIndex].Color == color)
@@ -106,21 +131,19 @@ namespace Chess {
 		}
 
 		public List<Move> GenerateMoves() {
-			var presudoMoves = GenerateDirtyMoves();
+			var presudoMoves = GeneratePresudoMoves();
 			var legalMoves = new List<Move>();
 			foreach (var move in presudoMoves) {
 				Move(move);
 				int kingIndex = -1;
-				Parallel.For(0, 64, (index, controll) => {
+				Parallel.For(0, AREA, (index, controll) => {
 					if (pieces[index].Type == PieceType.King && pieces[index].Color != color) {
 						kingIndex = index;
 						controll.Break();
 					}
 				});
-				var opopnentResoponses = GenerateDirtyMoves();
-				if (opopnentResoponses.AsParallel().Any(move => move.To == kingIndex)) {
-					// Illegal move.
-				} else {
+				var opopnentResoponses = GeneratePresudoMoves();
+				if (!opopnentResoponses.AsParallel().Any(move => move.To == kingIndex)) {
 					legalMoves.Add(move);
 				}
 				Undo();
@@ -193,10 +216,10 @@ namespace Chess {
 				int moveDifference = move.To - move.From;
 
 				// En Passant.
-				if (state.TwoSquarePawn != -1 &&
+				if (state.TwoSquarePawn != -1 && 
 					Mathf.Abs(move.To - state.TwoSquarePawn) == 8 &&
-					(isWhite && (moveDifference == 7 || moveDifference == 9) || !isWhite && 
-					(moveDifference == -7 || moveDifference == -9))) {
+					(Mathf.Abs(moveDifference) == 7 || Mathf.Abs(moveDifference) == 9) &&
+					pieces[state.TwoSquarePawn].Color != color) {
 					state.EnPassantCaptured = state.TwoSquarePawn;
 					pieces[state.EnPassantCaptured] = Piece.Empty;
 				}
@@ -230,7 +253,7 @@ namespace Chess {
 			SwapMoveColor();
 
 			if (state.PromotedPawn != -1) {
-				pieces[state.Move.To] = new Piece(PieceType.Pawn, color);
+				pieces[state.PromotedPawn] = new Piece(PieceType.Pawn, color);
 			}
 
 			pieces[state.Move.From] = pieces[state.Move.To];
