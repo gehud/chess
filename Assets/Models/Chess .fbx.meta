@@ -3,22 +3,7 @@ guid: 597b286950b0e1a41a65d06bfeb1d22d
 ModelImporter:
   serializedVersion: 21300
   internalIDToNameTable: []
-  externalObjects:
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: DarkMarble
-    second: {fileID: 2100000, guid: 50acf24f60e1b554c828c9d6f2f83a56, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: Glossy
-    second: {fileID: 2100000, guid: 13c4df893d92eb84482c78d548a6694a, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: LightMarble
-    second: {fileID: 2100000, guid: 4ca72e9ad23bc1e46bacfe897fa7a13a, type: 2}
+  externalObjects: {}
   materials:
     materialImportMode: 2
     materialName: 0

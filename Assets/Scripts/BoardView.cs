@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using UnityEngine;
 using Zenject;
@@ -9,7 +8,7 @@ namespace Chess {
 	public class BoardView : MonoBehaviour {
 		public event Action<PieceColor> OnCheckmate;
 
-		private readonly Board board = new();
+		private readonly Game game = new();
 
 		[Header("Navigation")]
 		[SerializeField] private GameObject cursor;
@@ -27,14 +26,14 @@ namespace Chess {
 
 		private void Awake() {
 			if (startPosition)
-				board.Start();
+				game.Start();
 			else
-				board.Load(fen);
+				game.Load(fen);
 			Apply();
 		}
 
 		private void UpdateView(int squareIndex) {
-			Piece piece = board.Pieces[squareIndex];
+			Piece piece = game.Board[squareIndex];
 
 			if (piece == Piece.Empty)
 				return;
@@ -53,6 +52,8 @@ namespace Chess {
 			views[squareIndex] = view;
 		}
 
+		//private List<GameObject> attackSquares = new();
+
 		private void Apply() {
 			foreach (var view in views) {
 				if (view != null)
@@ -63,8 +64,27 @@ namespace Chess {
 				UpdateView(squareIndex);
 			}
 
-			board.GenerateMoves();
+			game.GenerateMoves();
 			GameOverCheck();
+
+			//foreach (var item in attackSquares) {
+			//	Destroy(item);
+			//}
+
+			//attackSquares.Clear();
+
+			//foreach (var item in game.DangerousSquares) {
+			//	int x = item % 8;
+			//	int y = item / 8;
+			//	var cursorPosition = new Vector3 {
+			//		x = x - 4 + 0.5f,
+			//		y = cursor.transform.position.y,
+			//		z = y - 4 + 0.5f
+			//	};
+			//	var instance = Instantiate(cursor, cursorPosition, Quaternion.identity);
+			//	instance.GetComponent<Renderer>().material.color = new Color(1.0f, 0.0f, 0.0f, 0.5f);
+			//	attackSquares.Add(instance);
+			//}
 		}
 
 		private const int PAWN = 10;
@@ -78,7 +98,7 @@ namespace Chess {
 
 		private int CountColor(PieceColor color) {
 			int result = 0;
-			var pieces = board.Pieces.AsParallel();
+			var pieces = game.Board.AsParallel();
 			result += pieces.Count(piece => piece.Type == PieceType.Pawn && piece.Color == color) * PAWN;
 			result += pieces.Count(piece => piece.Type == PieceType.Knight && piece.Color == color) * KNIGHT;
 			result += pieces.Count(piece => piece.Type == PieceType.Bishop && piece.Color == color) * BISHOP;
@@ -90,7 +110,7 @@ namespace Chess {
 		private int Evaluate() {
 			int whiteEvaluation = CountColor(PieceColor.White);
 			int blackEvaluation = CountColor(PieceColor.Black);
-			int perspective = board.MoveColor == PieceColor.White ? -1 : 1;
+			int perspective = game.MoveColor == PieceColor.White ? -1 : 1;
 			return (whiteEvaluation - blackEvaluation) * perspective;
 		}
 
@@ -107,15 +127,15 @@ namespace Chess {
 		private List<Move> OrderMoves(List<Move> moves) {
 			return moves.OrderBy(move => { 
 				int quess = 0;
-				var fromType = board.Pieces[move.From].Type;
-				var toType = board.Pieces[move.To].Type;
+				var fromType = game.Board[move.From].Type;
+				var toType = game.Board[move.To].Type;
 
 				if (toType != PieceType.None) {
 					quess += 10 * GetPieceValue(toType) - GetPieceValue(fromType);
 				}
 
 				if (fromType == PieceType.Pawn) {
-					bool isWhite = board.Pieces[move.From].Color == PieceColor.White;
+					bool isWhite = game.Board[move.From].Color == PieceColor.White;
 					if (isWhite && move.To / Board.SIZE == 7 ||
 						!isWhite && move.To / Board.SIZE == 0)
 						quess += QUEEN;
@@ -129,15 +149,15 @@ namespace Chess {
 			if (depth == 0)
 				return Evaluate();
 
-			var newMoves = OrderMoves(board.GenerateMoves());
+			var newMoves = OrderMoves(game.GenerateMoves());
 			if (newMoves.Count == 0) {
 				return NEGATIVE_INFINITY;
 			}
 
 			foreach (var move in newMoves) {
-				board.Move(move);
+				game.Move(move);
 				int evaluation = -Search(depth - 1, -beta, -alpha);
-				board.Undo();
+				game.Undo();
 				if (evaluation >= beta) {
 					// Move was too good.
 					return beta;
@@ -154,12 +174,12 @@ namespace Chess {
 			Move? bestMove = null;
 			var bestValue = NEGATIVE_INFINITY;
 
-			var avaibleMoves = board.Moves;
+			var avaibleMoves = game.Moves;
 
 			foreach (var move in avaibleMoves) {
-				board.Move(move);
+				game.Move(move);
 				var boardValue = Search(2);
-				board.Undo();
+				game.Undo();
 				if (boardValue > bestValue) {
 					bestValue = boardValue;
 					bestMove = move;
@@ -168,14 +188,14 @@ namespace Chess {
 
 			bestMove ??= avaibleMoves[UnityEngine.Random.Range(0, avaibleMoves.Count - 1)];
 
-			board.Move(bestMove.Value);
+			game.Move(bestMove.Value);
 			Apply();
 			//UnityEngine.Debug.Log(stopwatch.ElapsedMilliseconds);
 		}
 
 		private void GameOverCheck() {
-			if (board.IsCheckmate()) {
-				if (board.MoveColor == PieceColor.White)
+			if (game.IsCheckmate()) {
+				if (game.MoveColor == PieceColor.White)
 					OnCheckmate?.Invoke(PieceColor.Black);
 				else
 					OnCheckmate?.Invoke(PieceColor.White);
@@ -191,7 +211,7 @@ namespace Chess {
 				return;
 			}
 
-			if (selected == -1 && board.Pieces[sqareIndex].Color == board.MoveColor) {			
+			if (selected == -1 && game.Board[sqareIndex].Color == game.MoveColor) {			
 				selected = sqareIndex;
 				int x = sqareIndex % 8;
 				int y = sqareIndex / 8;
@@ -201,7 +221,7 @@ namespace Chess {
 					z = y - 4 + 0.5f
 				};
 				cursors.Add(Instantiate(cursor, cursorPosition, Quaternion.identity));
-				foreach (var move in board.Moves.AsParallel().Where(move => move.From == selected)) {
+				foreach (var move in game.Moves.AsParallel().Where(move => move.From == selected)) {
 					x = move.To % 8;
 					y = move.To / 8;
 					cursorPosition = new Vector3 {
@@ -211,11 +231,11 @@ namespace Chess {
 					};
 					cursors.Add(Instantiate(cursor, cursorPosition, Quaternion.identity));
 				}
-			} else if (board.Moves.AsParallel().Any(move => move.From == selected && move.To == sqareIndex)) {
-				if (board.IsCheckmate())
+			} else if (game.Moves.AsParallel().Any(move => move.From == selected && move.To == sqareIndex)) {
+				if (game.IsCheckmate())
 					return;
 
-				board.Move(new Move(selected, sqareIndex));
+				game.Move(new Move(selected, sqareIndex));
 				Apply();
 				foreach (var instance in cursors)
 					Destroy(instance);
@@ -224,18 +244,18 @@ namespace Chess {
 
 				GameOverCheck();
 
-				if (playerWithComputer && board.MoveColor == PieceColor.Black && !board.IsCheckmate())
+				if (playerWithComputer && game.MoveColor == PieceColor.Black && !game.IsCheckmate())
 					MakeComputerMove();
 			}
 		}
 
 		private void Update() {
 			if (Input.GetKeyDown(KeyCode.Z) && Input.GetKey(KeyCode.LeftControl)) {
-				board.Undo();
+				game.Undo();
 				Apply();
 			}
 
-			if (Input.GetKeyDown(KeyCode.Slash) && !board.IsCheckmate())
+			if (Input.GetKeyDown(KeyCode.Slash) && !game.IsCheckmate())
 				MakeComputerMove();
 
 			if (!Input.GetMouseButtonDown(0))
