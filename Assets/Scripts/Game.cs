@@ -97,8 +97,10 @@ namespace Chess {
 			return move.From != myKing && lockedSquares.Contains(move.From) && !lockedSquares.Contains(move.To);
 		}
 
+		public bool IsCheck() => checkSquares.Count != 0;
+
 		private bool IsNotSavingFromCheck(int myKing, Move move) {
-			return checkSquares.Count != 0 && move.From != myKing && !checkSquares.Contains(move.To);
+			return IsCheck() && move.From != myKing && !checkSquares.Contains(move.To);
 		}
 
 		private bool IsCastlingUnderAttack(int myKing, Move move) {
@@ -330,7 +332,7 @@ namespace Chess {
 				int rank = Board.GetRank(move.To);
 
 				// Promotion.
-				if (isWhite && rank == 7 || !isWhite && rank == 0) {
+				if ((move.Flags & MoveFlags.Promotion) != MoveFlags.None) {
 					state.PromotedPawn = move.To;
 					board[move.From] = new Piece(PieceType.Queen, piece.Color);
 				}
@@ -432,6 +434,19 @@ namespace Chess {
 
 			bool isInVertivalBounds = color == PieceColor.White ? Board.GetRank(squareIndex) < 7 : Board.GetRank(squareIndex) > 0;
 
+			bool TryAddPromotionIfNeeded(int fromSquareIndex, int toSquareIndex) {
+				var rank = Board.GetRank(toSquareIndex);
+				if (rank == 0 || rank == 7) {
+					moves.Add(new Move(fromSquareIndex, toSquareIndex, MoveFlags.QueenPromotion));
+					moves.Add(new Move(fromSquareIndex, toSquareIndex, MoveFlags.RookPromotion));
+					moves.Add(new Move(fromSquareIndex, toSquareIndex, MoveFlags.KnightPromotion));
+					moves.Add(new Move(fromSquareIndex, toSquareIndex, MoveFlags.BishopPromotion));
+					return true;
+				}
+
+				return false;
+			}
+
 			if (isInVertivalBounds && Board.GetFile(squareIndex) > 0) {
 				var leftDiagonalDirection = color == PieceColor.White ?
 					Direction.NorthWest : Direction.SouthWest;
@@ -439,8 +454,11 @@ namespace Chess {
 				var targetPiece = board[targetSquareIndex];
 				attackSquares.Add(targetSquareIndex);
 				if (targetPiece != Piece.Empty) {
-					if (targetPiece.Color != color)
-						moves.Add(new Move(squareIndex, targetSquareIndex));
+					if (targetPiece.Color != color) {
+						if (!TryAddPromotionIfNeeded(squareIndex, targetSquareIndex)) {
+							moves.Add(new Move(squareIndex, targetSquareIndex));
+						}
+					}
 				}
 			}
 
@@ -451,8 +469,11 @@ namespace Chess {
 				var targetPiece = board[targetSquareIndex];
 				attackSquares.Add(targetSquareIndex);
 				if (targetPiece != Piece.Empty) {
-					if (targetPiece.Color != color)
-						moves.Add(new Move(squareIndex, targetSquareIndex));
+					if (targetPiece.Color != color) {
+						if (!TryAddPromotionIfNeeded(squareIndex, targetSquareIndex)) {
+							moves.Add(new Move(squareIndex, targetSquareIndex));
+						}
+					}
 				}
 			}
 
@@ -483,7 +504,9 @@ namespace Chess {
 				if (targetPiece != Piece.Empty)
 					break;
 
-				moves.Add(new Move(squareIndex, targetSquareIndex));
+				if (!TryAddPromotionIfNeeded(squareIndex, targetSquareIndex)) {
+					moves.Add(new Move(squareIndex, targetSquareIndex));
+				}
 			}
 		}
 

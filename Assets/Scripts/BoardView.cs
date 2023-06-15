@@ -151,7 +151,11 @@ namespace Chess {
 
 			var newMoves = OrderMoves(game.GenerateMoves());
 			if (newMoves.Count == 0) {
-				return NEGATIVE_INFINITY;
+				if (game.IsCheck()) {
+					return NEGATIVE_INFINITY;
+				}
+
+				return 0;
 			}
 
 			foreach (var move in newMoves) {
@@ -235,7 +239,9 @@ namespace Chess {
 				if (game.IsCheckmate())
 					return;
 
-				game.Move(new Move(selected, sqareIndex));
+				var promotion = game.Moves.AsParallel().Any(move => move.From == selected && move.To == sqareIndex && (move.Flags & MoveFlags.Promotion) != MoveFlags.None);
+
+				game.Move(new Move(selected, sqareIndex, promotion ? MoveFlags.QueenPromotion : MoveFlags.None));
 				Apply();
 				foreach (var instance in cursors)
 					Destroy(instance);
