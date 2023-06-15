@@ -1,4 +1,5 @@
 ﻿using Chess.Utilities;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -328,13 +329,17 @@ namespace Chess {
 						state.IsBlackKingsideCastlingAvaible = false;
 				}
 			} else if (piece.Type == PieceType.Pawn) {
-				bool isWhite = piece.Color == PieceColor.White;
-				int rank = Board.GetRank(move.To);
-
 				// Promotion.
 				if ((move.Flags & MoveFlags.Promotion) != MoveFlags.None) {
 					state.PromotedPawn = move.To;
-					board[move.From] = new Piece(PieceType.Queen, piece.Color);
+					var promotionPiece = (move.Flags & MoveFlags.Promotion) switch {
+						MoveFlags.QueenPromotion => PieceType.Queen,
+						MoveFlags.RookPromotion => PieceType.Rook,
+						MoveFlags.KnightPromotion => PieceType.Knight,
+						MoveFlags.BishopPromotion => PieceType.Bishop,
+						_ => throw new Exception("Invalid promotion"),
+					};
+					board[move.From] = new Piece(promotionPiece, piece.Color);
 				}
 
 				int moveDifference = move.To - move.From;
