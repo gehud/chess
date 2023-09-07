@@ -1,6 +1,8 @@
-﻿namespace Chess.Tests.EditMode.Utilities {
+﻿using UnityEngine;
+
+namespace Chess.Utilities {
 	public class PerftUtility {
-		public static int Perft(Game board, int depth) {
+		public static int Perft(Game board, int depth, Object context = null) {
 			int result = 0;
 
 			var moves = board.GenerateMoves();
@@ -11,7 +13,8 @@
 
 			foreach (var move in moves) {
 				board.Move(move);
-				result += Perft(board, depth - 1);
+				int count = Perft(board, depth - 1);
+				result += count;
 				board.Undo();
 			}
 

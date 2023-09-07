@@ -1,4 +1,4 @@
-﻿using Chess.Tests.EditMode.Utilities;
+﻿using Chess.Utilities;
 
 namespace Chess.Tests.EditMode.MoveGeneration {
 	public class Position {
@@ -9,9 +9,9 @@ namespace Chess.Tests.EditMode.MoveGeneration {
 		}
 
 		public void Assert(int depth, int count) {
-			var game = new Game();
-			game.Load(fen);
-			NUnit.Framework.Assert.AreEqual(count, PerftUtility.Perft(game, depth));
+			var gameA = new Game();
+			gameA.Load(fen);
+			NUnit.Framework.Assert.AreEqual(count, PerftUtility.Perft(gameA, depth));
 		}
 	}
 }

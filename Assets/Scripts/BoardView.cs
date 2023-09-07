@@ -98,12 +98,11 @@ namespace Chess {
 
 		private int CountColor(PieceColor color) {
 			int result = 0;
-			var pieces = game.Board.AsParallel();
-			result += pieces.Count(piece => piece.Type == PieceType.Pawn && piece.Color == color) * PAWN;
-			result += pieces.Count(piece => piece.Type == PieceType.Knight && piece.Color == color) * KNIGHT;
-			result += pieces.Count(piece => piece.Type == PieceType.Bishop && piece.Color == color) * BISHOP;
-			result += pieces.Count(piece => piece.Type == PieceType.Rook && piece.Color == color) * ROOK;
-			result += pieces.Count(piece => piece.Type == PieceType.Queen && piece.Color == color) * QUEEN;
+			result += game.GetPieceCount(PieceType.Pawn, color) * PAWN;
+			result += game.GetPieceCount(PieceType.Knight, color) * KNIGHT;
+			result += game.GetPieceCount(PieceType.Bishop, color) * BISHOP;
+			result += game.GetPieceCount(PieceType.Rook, color) * ROOK;
+			result += game.GetPieceCount(PieceType.Queen, color) * QUEEN;
 			return result;
 		}
 
@@ -134,20 +133,53 @@ namespace Chess {
 					quess += 10 * GetPieceValue(toType) - GetPieceValue(fromType);
 				}
 
-				if (fromType == PieceType.Pawn) {
-					bool isWhite = game.Board[move.From].Color == PieceColor.White;
-					if (isWhite && move.To / Board.SIZE == 7 ||
-						!isWhite && move.To / Board.SIZE == 0)
-						quess += QUEEN;
+				if ((move.Flags & MoveFlags.Promotion) != MoveFlags.None) {
+					quess += move.Flags switch {
+						MoveFlags.QueenPromotion => QUEEN,
+						MoveFlags.RookPromotion => ROOK,
+						MoveFlags.KnightPromotion => KNIGHT,
+						MoveFlags.BishopPromotion => BISHOP,
+						_ => 0
+					};
+				}
+
+				// Note that attack squares contains squares behind the king under sliding attack!
+				// TODO: Change it in future!
+				if (game.AttackSquares.Contains(move.To)) {
+					quess -= GetPieceValue(fromType);
 				}
 
 				return quess;
 			}).ToList();
 		}
 
+		private int SearchAllCaptures(int alpha, int beta) {
+			int evaluation = Evaluate();
+			if (evaluation >= beta)
+				return beta;
+
+			alpha = Mathf.Max(alpha, evaluation);
+
+			var captures = game.GenerateMoves(true);
+			captures = OrderMoves(captures);
+
+			foreach (var move in captures) {
+				game.Move(move);
+				evaluation = -SearchAllCaptures(-beta, -alpha);
+				game.Undo();
+
+				if (evaluation >= beta)
+					return beta;
+				alpha = Mathf.Max(alpha, evaluation);
+			}
+
+			return alpha;
+		}
+
 		private int Search(int depth, int alpha = NEGATIVE_INFINITY, int beta = POSITIVE_INFINITY) {
-			if (depth == 0)
-				return Evaluate();
+			if (depth == 0) {
+				return SearchAllCaptures(alpha, beta);
+			}
 
 			var newMoves = OrderMoves(game.GenerateMoves());
 			if (newMoves.Count == 0) {
@@ -174,7 +206,6 @@ namespace Chess {
 		}
 
 		private void MakeComputerMove() {
-			//var stopwatch = Stopwatch.StartNew();
 			Move? bestMove = null;
 			var bestValue = NEGATIVE_INFINITY;
 
@@ -194,7 +225,6 @@ namespace Chess {
 
 			game.Move(bestMove.Value);
 			Apply();
-			//UnityEngine.Debug.Log(stopwatch.ElapsedMilliseconds);
 		}
 
 		private void GameOverCheck() {
@@ -256,7 +286,7 @@ namespace Chess {
 		}
 
 		private void Update() {
-			if (Input.GetKeyDown(KeyCode.Z) && Input.GetKey(KeyCode.LeftControl)) {
+			if (Input.GetKeyDown(KeyCode.X)) {
 				game.Undo();
 				Apply();
 			}

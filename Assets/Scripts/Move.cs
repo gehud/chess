@@ -23,5 +23,17 @@ namespace Chess {
 			To = to;
 			Flags = flags;
 		}
+
+		private static char[] fileNotations = { 
+			'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'
+		};
+
+		public override string ToString() {
+			int fileFrom = Board.GetFile(From);
+			int rankFrom = Board.GetRank(From) + 1;
+			int fileTo = Board.GetFile(To);
+			int rankTo = Board.GetRank(To) + 1;
+			return fileNotations[fileFrom] + rankFrom.ToString() + fileNotations[fileTo] + rankTo.ToString();
+		}
 	}
 }

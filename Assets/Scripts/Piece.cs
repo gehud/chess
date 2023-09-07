@@ -4,14 +4,14 @@
 
 		public PieceType Type => (PieceType)(representation & 0b111);
 
-		public PieceColor Color => (PieceColor)(representation & 0b11000);
+		public PieceColor Color => (PieceColor)((representation & 0b11000) >> 3);
 
 		public bool IsEmpty => this == Empty;
 
 		private readonly byte representation;
 
 		public Piece(PieceType type, PieceColor color) {
-			representation = (byte)((byte)type | (byte)color);
+			representation = (byte)((byte)type | ((byte)color << 3));
 		}
 
 		public static bool operator==(Piece left, Piece right) {
