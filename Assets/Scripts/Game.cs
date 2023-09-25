@@ -500,7 +500,8 @@ namespace Chess {
 		private void GeneratePawnMoves(int squareIndex, bool capturesOnly = false) {
 			var color = board[squareIndex].Color;
 
-			bool isInVertivalBounds = color == PieceColor.White ? Board.GetRank(squareIndex) < 7 : Board.GetRank(squareIndex) > 0;
+			bool isInVertivalBounds = color == PieceColor.White ? 
+				Board.GetRank(squareIndex) < 7 : Board.GetRank(squareIndex) > 0;
 
 			bool TryAddPromotionIfNeeded(int fromSquareIndex, int toSquareIndex) {
 				var rank = Board.GetRank(toSquareIndex);
@@ -587,84 +588,94 @@ namespace Chess {
 			int rank = Board.GetRank(squareIndex);
 			var color = board[squareIndex].Color;
 
-			if (file > 1 && rank > 0) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.SouthWest) * 2 + GetSquareOffset(Direction.North);
-				var targetPiece = board[targetSquareIndex];
+			bool IsMoveNeeeded(in Piece targetPiece) => 
+				targetPiece.IsEmpty && !capturesOnly || targetPiece.Color != color;
+
+			void StoreMoveIfNeeded(int targetSquareIndex, in Piece targetPiece) {
 				attackSquares.Add(targetSquareIndex);
-				if (targetPiece.Color != color) {
-					if (!capturesOnly || targetPiece.Color != color)
-						moves.Add(new Move(squareIndex, targetSquareIndex));
+				if (IsMoveNeeeded(targetPiece)) {
+					moves.Add(new Move(squareIndex, targetSquareIndex));
 				}
+			}
+
+			if (file > 1 && rank > 0) {
+				var targetSquareIndex = squareIndex + 
+					GetSquareOffset(Direction.SouthWest) * 2 + 
+					GetSquareOffset(Direction.North);
+
+				var targetPiece = board[targetSquareIndex];
+
+				StoreMoveIfNeeded(targetSquareIndex, targetPiece);
 			}
 
 			if (file > 0 && rank > 1) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.SouthWest) * 2 + GetSquareOffset(Direction.East);
+				var targetSquareIndex = squareIndex + 
+					GetSquareOffset(Direction.SouthWest) * 2 + 
+					GetSquareOffset(Direction.East);
+
 				var targetPiece = board[targetSquareIndex];
-				attackSquares.Add(targetSquareIndex);
-				if (targetPiece.Color != color) {
-					if (!capturesOnly || targetPiece.Color != color)
-						moves.Add(new Move(squareIndex, targetSquareIndex));
-				}
+
+				StoreMoveIfNeeded(targetSquareIndex, targetPiece);
 			}
 
 			if (file > 0 && rank < 6) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.NorthWest) * 2 + GetSquareOffset(Direction.East);
+				var targetSquareIndex = squareIndex + 
+					GetSquareOffset(Direction.NorthWest) * 2 + 
+					GetSquareOffset(Direction.East);
+
 				var targetPiece = board[targetSquareIndex];
-				attackSquares.Add(targetSquareIndex);
-				if (targetPiece.Color != color) {
-					if (!capturesOnly || targetPiece.Color != color)
-						moves.Add(new Move(squareIndex, targetSquareIndex));
-				}
+
+				StoreMoveIfNeeded(targetSquareIndex, targetPiece);
 			}
 
 			if (file > 1 && rank < 7) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.NorthWest) * 2 + GetSquareOffset(Direction.South);
+				var targetSquareIndex = squareIndex + 
+					GetSquareOffset(Direction.NorthWest) * 2 + 
+					GetSquareOffset(Direction.South);
+
 				var targetPiece = board[targetSquareIndex];
-				attackSquares.Add(targetSquareIndex);
-				if (targetPiece.Color != color) {
-					if (!capturesOnly || targetPiece.Color != color)
-						moves.Add(new Move(squareIndex, targetSquareIndex));
-				}
+
+				StoreMoveIfNeeded(targetSquareIndex, targetPiece);
 			}
 
 			if (file < 7 && rank < 6) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.NorthEast) * 2 + GetSquareOffset(Direction.West);
+				var targetSquareIndex = squareIndex + 
+					GetSquareOffset(Direction.NorthEast) * 2 + 
+					GetSquareOffset(Direction.West);
+
 				var targetPiece = board[targetSquareIndex];
-				attackSquares.Add(targetSquareIndex);
-				if (targetPiece.Color != color) {
-					if (!capturesOnly || targetPiece.Color != color)
-						moves.Add(new Move(squareIndex, targetSquareIndex));
-				}
+
+				StoreMoveIfNeeded(targetSquareIndex, targetPiece);
 			}
 
 			if (file < 6 && rank < 7) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.NorthEast) * 2 + GetSquareOffset(Direction.South);
+				var targetSquareIndex = squareIndex + 
+					GetSquareOffset(Direction.NorthEast) * 2 + 
+					GetSquareOffset(Direction.South);
+
 				var targetPiece = board[targetSquareIndex];
-				attackSquares.Add(targetSquareIndex);
-				if (targetPiece.Color != color) {
-					if (!capturesOnly || targetPiece.Color != color)
-						moves.Add(new Move(squareIndex, targetSquareIndex));
-				}
+
+				StoreMoveIfNeeded(targetSquareIndex, targetPiece);
 			}
 
 			if (file < 6 && rank > 0) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.SouthEast) * 2 + GetSquareOffset(Direction.North);
+				var targetSquareIndex = squareIndex + 
+					GetSquareOffset(Direction.SouthEast) * 2 + 
+					GetSquareOffset(Direction.North);
+
 				var targetPiece = board[targetSquareIndex];
-				attackSquares.Add(targetSquareIndex);
-				if (targetPiece.Color != color) {
-					if (!capturesOnly || targetPiece.Color != color)
-						moves.Add(new Move(squareIndex, targetSquareIndex));
-				}
+
+				StoreMoveIfNeeded(targetSquareIndex, targetPiece);
 			}
 
 			if (file < 7 && rank > 1) {
-				var targetSquareIndex = squareIndex + GetSquareOffset(Direction.SouthEast) * 2 + GetSquareOffset(Direction.West);
+				var targetSquareIndex = squareIndex + 
+					GetSquareOffset(Direction.SouthEast) * 2 + 
+					GetSquareOffset(Direction.West);
+
 				var targetPiece = board[targetSquareIndex];
-				attackSquares.Add(targetSquareIndex);
-				if (targetPiece.Color != color) {
-					if (!capturesOnly || targetPiece.Color != color)
-						moves.Add(new Move(squareIndex, targetSquareIndex));
-				}
+
+				StoreMoveIfNeeded(targetSquareIndex, targetPiece);
 			}
 		}
 

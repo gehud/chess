@@ -87,11 +87,11 @@ namespace Chess {
 			//}
 		}
 
-		private const int PAWN = 10;
-		private const int KNIGHT = 30;
-		private const int BISHOP = 30;
-		private const int ROOK = 50;
-		private const int QUEEN = 90;
+		private const int PAWN = 1;
+		private const int KNIGHT = 3;
+		private const int BISHOP = 3;
+		private const int ROOK = 5;
+		private const int QUEEN = 9;
 
 		private const int POSITIVE_INFINITY = +999999;
 		private const int NEGATIVE_INFINITY = -999999;

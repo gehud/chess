@@ -24,7 +24,7 @@ namespace Chess {
 			Flags = flags;
 		}
 
-		private static char[] fileNotations = { 
+		private static readonly char[] fileNotations = { 
 			'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'
 		};
 
