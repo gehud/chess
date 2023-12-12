@@ -2,16 +2,16 @@
 
 namespace Chess.Utilities {
 	public static class FENUtility {
-		private static readonly Dictionary<char, PieceType> pieceSybmolMap = new() {
-			{ 'p', PieceType.Pawn },
-			{ 'n', PieceType.Knight },
-			{ 'b', PieceType.Bishop },
-			{ 'r', PieceType.Rook },
-			{ 'q', PieceType.Queen },
-			{ 'k', PieceType.King },
+		private static readonly Dictionary<char, Figure> pieceSybmolMap = new() {
+			{ 'p', Figure.Pawn },
+			{ 'n', Figure.Knight },
+			{ 'b', Figure.Bishop },
+			{ 'r', Figure.Rook },
+			{ 'q', Figure.Queen },
+			{ 'k', Figure.King },
 		};
 
-		public static void Load(string fen, Board board, ref GameState gameState, ref PieceColor moveColor) {
+		public static void Load(string fen, Board board, ref GameState gameState, ref Color moveColor) {
 			var state = fen.Split(' ');
 			var squares = state[0];
 			int file = 0, rank = 7;
@@ -23,7 +23,7 @@ namespace Chess.Utilities {
 					if (char.IsDigit(symbol)) {
 						file += (int)char.GetNumericValue(symbol);
 					} else {
-						var color = char.IsUpper(symbol) ? PieceColor.White : PieceColor.Black;
+						var color = char.IsUpper(symbol) ? Color.White : Color.Black;
 						var type = pieceSybmolMap[char.ToLower(symbol)];
 						board[file + rank * Board.SIZE] = new Piece(type, color);
 						++file;
@@ -31,7 +31,7 @@ namespace Chess.Utilities {
 				}
 			}
 
-			moveColor = char.Parse(state[1]) == 'w' ? PieceColor.White : PieceColor.Black;
+			moveColor = char.Parse(state[1]) == 'w' ? Color.White : Color.Black;
 
 			var castlings = state[2];
 			if (castlings != "-") {

@@ -26,14 +26,14 @@ namespace Chess.UI {
 			boardView.OnCheckmate -= OnCheckmate;
 		}
 
-		private void OnCheckmate(PieceColor color) {
+		private void OnCheckmate(Color color) {
 			panel.SetActive(true);
 			winnerText.gameObject.SetActive(true);
 			switch (color) {
-				case PieceColor.White:
+				case Color.White:
 					winnerText.text = "White Wins!";
 					break;
-				case PieceColor.Black:
+				case Color.Black:
 					winnerText.text = "Black Wins!";
 					break;
 			}

@@ -1,5 +1,5 @@
 ﻿namespace Chess {
-	public enum PieceType : byte {
+	public enum Figure : byte {
 		None,
 		Pawn,
 		Bishop,

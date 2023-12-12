@@ -10,8 +10,8 @@ namespace Chess {
 
 		private readonly Board board = new();
 
-		public PieceColor MoveColor => moveColor;
-		private PieceColor moveColor = PieceColor.White;
+		public Color MoveColor => moveColor;
+		private Color moveColor = Color.White;
 
 		public List<Move> Moves => moves;
 		private List<Move> moves;
@@ -64,24 +64,24 @@ namespace Chess {
 			CountBoard();
 		}
 
-		private void ValidatePieceCountOperation(PieceType pieceType, PieceColor pieceColor) {
-			if (pieceType == PieceType.None)
+		private void ValidatePieceCountOperation(Figure pieceType, Color pieceColor) {
+			if (pieceType == Figure.None)
 				throw new ArgumentException("Invalid piece type of count operation", nameof(pieceType));
-			if (pieceColor == PieceColor.None)
+			if (pieceColor == Color.None)
 				throw new ArgumentException("Invalid piece color of count operation", nameof(pieceColor));
 		}
 
-		public int GetPieceCount(PieceType pieceType, PieceColor pieceColor) {
+		public int GetPieceCount(Figure pieceType, Color pieceColor) {
 			ValidatePieceCountOperation(pieceType, pieceColor);
 			return pieceCount[((byte)pieceColor - 1) * 2 + (byte)pieceType];
 		}
 
-		private void IncrementPieceCount(PieceType pieceType, PieceColor pieceColor) {
+		private void IncrementPieceCount(Figure pieceType, Color pieceColor) {
 			ValidatePieceCountOperation(pieceType, pieceColor);
 			++pieceCount[((byte)pieceColor - 1) * 2 + (byte)pieceType];
 		}
 
-		private void DecrementPieceCount(PieceType pieceType, PieceColor pieceColor) {
+		private void DecrementPieceCount(Figure pieceType, Color pieceColor) {
 			ValidatePieceCountOperation(pieceType, pieceColor);
 			--pieceCount[((byte)pieceColor - 1) * 2 + (byte)pieceType];
 		}
@@ -94,7 +94,7 @@ namespace Chess {
 			for (int i = 0; i < Board.SIZE; i++) {
 				var piece = board[i];
 				if (piece != Piece.Empty)
-					IncrementPieceCount(piece.Type, piece.Color);
+					IncrementPieceCount(piece.Figure, piece.Color);
 			}
 		}
 
@@ -157,7 +157,7 @@ namespace Chess {
 
 		private bool IsDangerousEnPassant(Move move) {
 			int diff = Mathf.Abs(move.To - move.From);
-			return isEnPassantDangerous && board[move.From].Type == PieceType.Pawn &&
+			return isEnPassantDangerous && board[move.From].Figure == Figure.Pawn &&
 				Mathf.Abs(move.To - state.TwoSquarePawn) == 8 && (diff == 7 || diff == 9);
 		}
 
@@ -223,7 +223,7 @@ namespace Chess {
 						continue;
 					}
 
-					var targetPieceType = targetPiece.Type;
+					var targetPieceType = targetPiece.Figure;
 
 					if (targetSquareIndex == state.TwoSquarePawn && 
 						directionIndex != 0 && directionIndex != 1) {
@@ -231,15 +231,15 @@ namespace Chess {
 						continue;
 					}
 
-					bool isPawnCheck = directionIndex >= 4 && i == 0 && targetPieceType == PieceType.Pawn;
+					bool isPawnCheck = directionIndex >= 4 && i == 0 && targetPieceType == Figure.Pawn;
 					
 					if (isPawnCheck) {
 						checkSquares.Add(targetSquareIndex);
 					}
 
-					if (directionIndex < 4 && targetPieceType == PieceType.Rook ||
-						directionIndex >= 4 && targetPieceType == PieceType.Bishop ||
-						targetPieceType == PieceType.Queen) {
+					if (directionIndex < 4 && targetPieceType == Figure.Rook ||
+						directionIndex >= 4 && targetPieceType == Figure.Bishop ||
+						targetPieceType == Figure.Queen) {
 
 						if (isEnPassantPossibleDangerous) {
 							isEnPassantDangerous = true;
@@ -267,7 +267,7 @@ namespace Chess {
 			if (file > 1 && rank > 0) {
 				var targetSquareIndex = myKing + GetSquareOffset(Direction.SouthWest) * 2 + GetSquareOffset(Direction.North);
 				var targetPiece = board[targetSquareIndex];
-				if (targetPiece.Type == PieceType.Knight && targetPiece.Color != MoveColor) {
+				if (targetPiece.Figure == Figure.Knight && targetPiece.Color != MoveColor) {
 					checkSquares.Add(targetSquareIndex);
 				}
 			}
@@ -275,7 +275,7 @@ namespace Chess {
 			if (file > 0 && rank > 1) {
 				var targetSquareIndex = myKing + GetSquareOffset(Direction.SouthWest) * 2 + GetSquareOffset(Direction.East);
 				var targetPiece = board[targetSquareIndex];
-				if (targetPiece.Type == PieceType.Knight && targetPiece.Color != MoveColor) {
+				if (targetPiece.Figure == Figure.Knight && targetPiece.Color != MoveColor) {
 					checkSquares.Add(targetSquareIndex);
 				}
 			}
@@ -283,7 +283,7 @@ namespace Chess {
 			if (file > 0 && rank < 6) {
 				var targetSquareIndex = myKing + GetSquareOffset(Direction.NorthWest) * 2 + GetSquareOffset(Direction.East);
 				var targetPiece = board[targetSquareIndex];
-				if (targetPiece.Type == PieceType.Knight && targetPiece.Color != MoveColor) {
+				if (targetPiece.Figure == Figure.Knight && targetPiece.Color != MoveColor) {
 					checkSquares.Add(targetSquareIndex);
 				}
 			}
@@ -291,7 +291,7 @@ namespace Chess {
 			if (file > 1 && rank < 7) {
 				var targetSquareIndex = myKing + GetSquareOffset(Direction.NorthWest) * 2 + GetSquareOffset(Direction.South);
 				var targetPiece = board[targetSquareIndex];
-				if (targetPiece.Type == PieceType.Knight && targetPiece.Color != MoveColor) {
+				if (targetPiece.Figure == Figure.Knight && targetPiece.Color != MoveColor) {
 					checkSquares.Add(targetSquareIndex);
 				}
 			}
@@ -299,7 +299,7 @@ namespace Chess {
 			if (file < 7 && rank < 6) {
 				var targetSquareIndex = myKing + GetSquareOffset(Direction.NorthEast) * 2 + GetSquareOffset(Direction.West);
 				var targetPiece = board[targetSquareIndex];
-				if (targetPiece.Type == PieceType.Knight && targetPiece.Color != MoveColor) {
+				if (targetPiece.Figure == Figure.Knight && targetPiece.Color != MoveColor) {
 					checkSquares.Add(targetSquareIndex);
 				}
 			}
@@ -307,7 +307,7 @@ namespace Chess {
 			if (file < 6 && rank < 7) {
 				var targetSquareIndex = myKing + GetSquareOffset(Direction.NorthEast) * 2 + GetSquareOffset(Direction.South);
 				var targetPiece = board[targetSquareIndex];
-				if (targetPiece.Type == PieceType.Knight && targetPiece.Color != MoveColor) {
+				if (targetPiece.Figure == Figure.Knight && targetPiece.Color != MoveColor) {
 					checkSquares.Add(targetSquareIndex);
 				}
 			}
@@ -315,7 +315,7 @@ namespace Chess {
 			if (file < 6 && rank > 0) {
 				var targetSquareIndex = myKing + GetSquareOffset(Direction.SouthEast) * 2 + GetSquareOffset(Direction.North);
 				var targetPiece = board[targetSquareIndex];
-				if (targetPiece.Type == PieceType.Knight && targetPiece.Color != MoveColor) {
+				if (targetPiece.Figure == Figure.Knight && targetPiece.Color != MoveColor) {
 					checkSquares.Add(targetSquareIndex);
 				}
 			}
@@ -323,7 +323,7 @@ namespace Chess {
 			if (file < 7 && rank > 1) {
 				var targetSquareIndex = myKing + GetSquareOffset(Direction.SouthEast) * 2 + GetSquareOffset(Direction.West);
 				var targetPiece = board[targetSquareIndex];
-				if (targetPiece.Type == PieceType.Knight && targetPiece.Color != MoveColor) {
+				if (targetPiece.Figure == Figure.Knight && targetPiece.Color != MoveColor) {
 					checkSquares.Add(targetSquareIndex);
 				}
 			}
@@ -335,8 +335,8 @@ namespace Chess {
 			state.EnPassantCaptured = -1;
 			state.PromotedPawn = -1;
 			var piece = board[move.From];
-			if (piece.Type == PieceType.King) {
-				bool isWhite = piece.Color == PieceColor.White;
+			if (piece.Figure == Figure.King) {
+				bool isWhite = piece.Color == Color.White;
 				bool isKingCastling = move.To == move.From + GetSquareOffset(Direction.East) * 2;
 				bool isQueenCastling = move.To == move.From + GetSquareOffset(Direction.West) * 2;
 				if (isKingCastling) {
@@ -367,8 +367,8 @@ namespace Chess {
 					state.IsBlackKingsideCastlingAvaible = false;
 					state.IsBlackQueensideCastlingAvaible = false;
 				}
-			} else if (piece.Type == PieceType.Rook) {
-				bool isWhite = piece.Color == PieceColor.White;
+			} else if (piece.Figure == Figure.Rook) {
+				bool isWhite = piece.Color == Color.White;
 				if (isWhite) {
 					if (move.From == 0)
 						state.IsWhiteQueensideCastlingAvaible = false;
@@ -380,20 +380,20 @@ namespace Chess {
 					else if (move.From == 63)
 						state.IsBlackKingsideCastlingAvaible = false;
 				}
-			} else if (piece.Type == PieceType.Pawn) {
+			} else if (piece.Figure == Figure.Pawn) {
 				// Promotion.
 				if ((move.Flags & MoveFlags.Promotion) != MoveFlags.None) {
 					state.PromotedPawn = move.To;
 					var promotionPiece = (move.Flags & MoveFlags.Promotion) switch {
-						MoveFlags.QueenPromotion => PieceType.Queen,
-						MoveFlags.RookPromotion => PieceType.Rook,
-						MoveFlags.KnightPromotion => PieceType.Knight,
-						MoveFlags.BishopPromotion => PieceType.Bishop,
+						MoveFlags.QueenPromotion => Figure.Queen,
+						MoveFlags.RookPromotion => Figure.Rook,
+						MoveFlags.KnightPromotion => Figure.Knight,
+						MoveFlags.BishopPromotion => Figure.Bishop,
 						_ => throw new Exception("Invalid promotion"),
 					};
-					DecrementPieceCount(board[move.From].Type, board[move.From].Color);
+					DecrementPieceCount(board[move.From].Figure, board[move.From].Color);
 					board[move.From] = new Piece(promotionPiece, piece.Color);
-					IncrementPieceCount(board[move.From].Type, board[move.From].Color);
+					IncrementPieceCount(board[move.From].Figure, board[move.From].Color);
 				}
 
 				int moveDifference = move.To - move.From;
@@ -405,7 +405,7 @@ namespace Chess {
 					board[state.TwoSquarePawn].Color != moveColor) {
 					state.EnPassantCaptured = state.TwoSquarePawn;
 					var capturetPawn = board[state.EnPassantCaptured];
-					DecrementPieceCount(capturetPawn.Type, capturetPawn.Color);
+					DecrementPieceCount(capturetPawn.Figure, capturetPawn.Color);
 					board[state.EnPassantCaptured] = Piece.Empty;
 				}
 
@@ -419,8 +419,8 @@ namespace Chess {
 			}
 
 			// Capture the rook and test castling ability.
-			if (board[move.To].Type == PieceType.Rook) {
-				if (board[move.To].Color == PieceColor.White) {
+			if (board[move.To].Figure == Figure.Rook) {
+				if (board[move.To].Color == Color.White) {
 					if (move.To == 0)
 						state.IsWhiteQueensideCastlingAvaible = false;
 					else if (move.To == 7)
@@ -435,7 +435,7 @@ namespace Chess {
 
 			state.Captured = board[move.To];
 			if (state.Captured != Piece.Empty)
-				DecrementPieceCount(state.Captured.Type, state.Captured.Color);
+				DecrementPieceCount(state.Captured.Figure, state.Captured.Color);
 			board[move.To] = board[move.From];
 			board[move.From] = Piece.Empty;
 			state.Move = move;
@@ -444,8 +444,8 @@ namespace Chess {
 
 		public void Undo() {
 			if (state.EnPassantCaptured != -1) {
-				board[state.EnPassantCaptured] = new Piece(PieceType.Pawn, moveColor);
-				IncrementPieceCount(board[state.EnPassantCaptured].Type, board[state.EnPassantCaptured].Color);
+				board[state.EnPassantCaptured] = new Piece(Figure.Pawn, moveColor);
+				IncrementPieceCount(board[state.EnPassantCaptured].Figure, board[state.EnPassantCaptured].Color);
 			}
 
 			if (state.CastlingRook.IsValid) {
@@ -456,13 +456,13 @@ namespace Chess {
 			SwapMoveColor();
 
 			if (state.PromotedPawn != -1) {
-				DecrementPieceCount(board[state.PromotedPawn].Type, board[state.PromotedPawn].Color);
-				board[state.PromotedPawn] = new Piece(PieceType.Pawn, moveColor);
-				IncrementPieceCount(board[state.PromotedPawn].Type, board[state.PromotedPawn].Color);
+				DecrementPieceCount(board[state.PromotedPawn].Figure, board[state.PromotedPawn].Color);
+				board[state.PromotedPawn] = new Piece(Figure.Pawn, moveColor);
+				IncrementPieceCount(board[state.PromotedPawn].Figure, board[state.PromotedPawn].Color);
 			}
 
 			if (state.Captured != Piece.Empty)
-				IncrementPieceCount(state.Captured.Type, state.Captured.Color);
+				IncrementPieceCount(state.Captured.Figure, state.Captured.Color);
 			board[state.Move.From] = board[state.Move.To];
 			board[state.Move.To] = state.Captured;
 			state = history.Pop();
@@ -500,7 +500,7 @@ namespace Chess {
 		private void GeneratePawnMoves(int squareIndex, bool capturesOnly = false) {
 			var color = board[squareIndex].Color;
 
-			bool isInVertivalBounds = color == PieceColor.White ? 
+			bool isInVertivalBounds = color == Color.White ? 
 				Board.GetRank(squareIndex) < 7 : Board.GetRank(squareIndex) > 0;
 
 			bool TryAddPromotionIfNeeded(int fromSquareIndex, int toSquareIndex) {
@@ -519,7 +519,7 @@ namespace Chess {
 			}
 
 			if (isInVertivalBounds && Board.GetFile(squareIndex) > 0) {
-				var leftDiagonalDirection = color == PieceColor.White ?
+				var leftDiagonalDirection = color == Color.White ?
 					Direction.NorthWest : Direction.SouthWest;
 				int targetSquareIndex = squareIndex + GetSquareOffset(leftDiagonalDirection);
 				var targetPiece = board[targetSquareIndex];
@@ -535,7 +535,7 @@ namespace Chess {
 			}
 
 			if (isInVertivalBounds && Board.GetFile(squareIndex) < 7) {
-				var rightDiagonalDirection = color == PieceColor.White ?
+				var rightDiagonalDirection = color == Color.White ?
 					Direction.NorthEast : Direction.SouthEast;
 				var targetSquareIndex = squareIndex + GetSquareOffset(rightDiagonalDirection);
 				var targetPiece = board[targetSquareIndex];
@@ -550,9 +550,9 @@ namespace Chess {
 				}
 			}
 
-			var twoSquarePawnColor = state.TwoSquarePawn != -1 ? board[state.TwoSquarePawn].Color : PieceColor.None;
+			var twoSquarePawnColor = state.TwoSquarePawn != -1 ? board[state.TwoSquarePawn].Color : Color.None;
 			bool enPassant =
-				twoSquarePawnColor != PieceColor.None &&
+				twoSquarePawnColor != Color.None &&
 				twoSquarePawnColor != color &&
 				Mathf.Abs(Board.GetFile(squareIndex) - Board.GetFile(state.TwoSquarePawn)) == 1 &&
 				(state.TwoSquarePawn - squareIndex) switch {
@@ -562,14 +562,14 @@ namespace Chess {
 				};
 
 			if (enPassant) {
-				var offsetDirection = color == PieceColor.White ? Direction.North : Direction.South;
+				var offsetDirection = color == Color.White ? Direction.North : Direction.South;
 				int targetSquare = state.TwoSquarePawn + GetSquareOffset(offsetDirection);
 				moves.Add(new Move(squareIndex, targetSquare));
 			}
 
-			int directionOffsetIndex = color == PieceColor.White ? 0 : 1;
-			int avaibleSquares = (color == PieceColor.White && Board.GetRank(squareIndex) == 1
-				|| color == PieceColor.Black && Board.GetRank(squareIndex) == 6) ? 2 : 1;
+			int directionOffsetIndex = color == Color.White ? 0 : 1;
+			int avaibleSquares = (color == Color.White && Board.GetRank(squareIndex) == 1
+				|| color == Color.Black && Board.GetRank(squareIndex) == 6) ? 2 : 1;
 			for (int i = 0; i < Mathf.Min(GetMoveLimit(squareIndex, directionOffsetIndex), avaibleSquares); i++) {
 				var targetSquareIndex = squareIndex + squareOffsets[directionOffsetIndex] * (i + 1);
 				var targetPiece = board[targetSquareIndex];
@@ -684,7 +684,7 @@ namespace Chess {
 			myKing = squareIndex;
 
 			// Castling
-			if (color == PieceColor.White) {
+			if (color == Color.White) {
 				if (state.IsWhiteKingsideCastlingAvaible) {
 					bool isWhiteKingCastlingPossigle = true;
 					for (int i = 1; i <= 2; i++) {
@@ -761,11 +761,11 @@ namespace Chess {
 
 		private void GenerateSlidingMoves(int squareIndex, bool capturesOnly = false) {
 			var piece = board[squareIndex];
-			var pieceType = piece.Type;
+			var pieceType = piece.Figure;
 
 			var pieceColor = piece.Color;
-			int startDirectionIndex = pieceType == PieceType.Bishop ? 4 : 0;
-			int endDirectionIndex = pieceType == PieceType.Rook ? 4 : 8;
+			int startDirectionIndex = pieceType == Figure.Bishop ? 4 : 0;
+			int endDirectionIndex = pieceType == Figure.Rook ? 4 : 8;
 
 			for (int directionIndex = startDirectionIndex; directionIndex < endDirectionIndex; directionIndex++) {
 				int limit = GetMoveLimit(squareIndex, directionIndex);
@@ -781,7 +781,7 @@ namespace Chess {
 						moves.Add(new Move(squareIndex, targetSquareIndex));
 
 					if (targetPiece != Piece.Empty) {
-						if (targetPiece.Type == PieceType.King && targetPiece.Color != pieceColor) {
+						if (targetPiece.Figure == Figure.King && targetPiece.Color != pieceColor) {
 							for (int j = i + 1; j < limit; j++) {
 								targetSquareIndex = squareIndex + squareOffsets[directionIndex] * (j + 1);
 								targetPiece = board[targetSquareIndex];
@@ -797,10 +797,10 @@ namespace Chess {
 			}
 		}
 
-		private bool IsSliding(PieceType type) => type switch {
-			PieceType.Bishop => true,
-			PieceType.Rook => true,
-			PieceType.Queen => true,
+		private bool IsSliding(Figure type) => type switch {
+			Figure.Bishop => true,
+			Figure.Rook => true,
+			Figure.Queen => true,
 			_ => false
 		};
 
@@ -810,20 +810,20 @@ namespace Chess {
 			if (piece == Piece.Empty)
 				return;
 
-			var type = piece.Type;
+			var type = piece.Figure;
 			if (IsSliding(type)) {
 				GenerateSlidingMoves(squareIndex, capturesOnly);
-			} else if (type == PieceType.Pawn) {
+			} else if (type == Figure.Pawn) {
 				GeneratePawnMoves(squareIndex, capturesOnly);
-			} else if (type == PieceType.Knight) {
+			} else if (type == Figure.Knight) {
 				GenerateKnightMoves(squareIndex, capturesOnly);
-			} else if (type == PieceType.King) {
+			} else if (type == Figure.King) {
 				GenerateKingMoves(squareIndex, capturesOnly);
 			}
 		}
 
 		private void SwapMoveColor() {
-			moveColor = moveColor == PieceColor.White ? PieceColor.Black : PieceColor.White;
+			moveColor = moveColor == Color.White ? Color.Black : Color.White;
 		}
 	}
 }

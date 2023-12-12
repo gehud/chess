@@ -1,40 +1,41 @@
 ﻿namespace Chess {
-	public readonly struct Piece {
-		public static Piece Empty => new(PieceType.None, PieceColor.None);
+    public readonly struct Piece {
+        public static Piece Empty => new(Figure.None, Color.None);
 
-		public PieceType Type => (PieceType)(representation & 0b111);
+        public Figure Figure => (Figure)(value & 0b111);
 
-		public PieceColor Color => (PieceColor)((representation & 0b11000) >> 3);
+        public Color Color => (Color)((value & 0b11000) >> 3);
 
-		public bool IsEmpty => this == Empty;
+        public bool IsEmpty => value == 0;
 
-		private readonly byte representation;
+        private readonly byte value;
 
-		public Piece(PieceType type, PieceColor color) {
-			representation = (byte)((byte)type | ((byte)color << 3));
-		}
+        public Piece(Figure figure, Color color) {
+            value = (byte)((byte)figure | ((byte)color << 3));
+        }
 
-		public static bool operator==(Piece left, Piece right) {
-			return left.representation == right.representation;
-		}
+        public static bool operator ==(Piece left, Piece right) {
+            return left.value == right.value;
+        }
 
-		public static bool operator!=(Piece left, Piece right) {
-			return left.representation != right.representation;
-		}
+        public static bool operator !=(Piece left, Piece right) {
+            return left.value != right.value;
+        }
 
-		public override bool Equals(object @object) {
-			if (@object is not Piece piece)
-				return false;
+        public override bool Equals(object @object) {
+            if (@object is not Piece piece) {
+                return false;
+            }
 
-			return representation == piece.representation;
-		}
+            return value == piece.value;
+        }
 
-		public override int GetHashCode() {
-			return representation;
-		}
+        public override int GetHashCode() {
+            return value;
+        }
 
-		public override string ToString() {
-			return $"Type: {Type}, Color: {Color}";
-		}
-	}
+        public override string ToString() {
+            return $"Figure: {Figure}, Color: {Color}";
+        }
+    }
 }
