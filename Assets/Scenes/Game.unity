@@ -1393,9 +1393,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cursor: {fileID: 4069888993260134568, guid: 84433c1e68aeff842b37265814a9c470, type: 3}
-  startPosition: 0
+  loadInitialPosition: 0
   fen: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
-  playerWithComputer: 1
+  playerWithComputer: 0
 --- !u!23 &2158281015353206717
 MeshRenderer:
   m_ObjectHideFlags: 0

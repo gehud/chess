@@ -1,45 +1,56 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Collections;
 using UnityEngine;
 using Zenject;
 
 namespace Chess {
-    public class BoardView : MonoBehaviour {
+    public class GameController : MonoBehaviour {
         public event Action<Color> OnCheckmate;
 
-        private readonly Game game = new();
-
         [Header("Navigation")]
-        [SerializeField] private GameObject cursor;
-        [SerializeField] private bool startPosition = true;
-        [SerializeField] private string fen;
-        [SerializeField] private bool playerWithComputer = true;
+        [SerializeField]
+        private GameObject cursor;
+        [SerializeField]
+        private bool loadInitialPosition = true;
+        [SerializeField]
+        private string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        [SerializeField]
+        private bool playerWithComputer = true;
 
-        [Inject] private readonly IPieceViewFactory pieceViewFactory;
+        [Inject]
+        private readonly IPieceViewFactory pieceViewFactory;
 
-        private readonly GameObject[] views = new GameObject[Board.AREA];
+        private Game game;
+
+        private readonly GameObject[] views = new GameObject[Board.Area];
 
         private int selected = -1;
 
         private readonly List<GameObject> cursors = new();
 
         private void Awake() {
-            if (startPosition)
+            game = new Game(Allocator.Persistent);
+
+            if (loadInitialPosition) {
                 game.Start();
-            else
+            } else {
                 game.Load(fen);
+            }
+
             Apply();
         }
 
         private void UpdateView(int squareIndex) {
             Piece piece = game.Board[squareIndex];
 
-            if (piece == Piece.Empty)
+            if (piece == Piece.Empty) {
                 return;
+            }
 
-            int x = squareIndex % 8;
-            int y = squareIndex / 8;
+            var x = squareIndex % 8;
+            var y = squareIndex / 8;
 
             var view = pieceViewFactory.Create(piece);
 
@@ -56,16 +67,18 @@ namespace Chess {
 
         private void Apply() {
             foreach (var view in views) {
-                if (view != null)
+                if (view != null) {
                     Destroy(view);
+                }
             }
 
-            for (int squareIndex = 0; squareIndex < Board.AREA; squareIndex++) {
+            for (int squareIndex = 0; squareIndex < Board.Area; squareIndex++) {
                 UpdateView(squareIndex);
             }
 
-            game.GenerateMoves();
-            GameOverCheck();
+            //game.GenerateMoves();
+            game.GenerateRawMoves();
+            //GameOverCheck();
 
             //foreach (var item in attackSquares) {
             //	Destroy(item);
@@ -87,22 +100,22 @@ namespace Chess {
             //}
         }
 
-        private const int PAWN = 1;
-        private const int KNIGHT = 3;
-        private const int BISHOP = 3;
-        private const int ROOK = 5;
-        private const int QUEEN = 9;
+        private const int pawn = 1;
+        private const int knight = 3;
+        private const int bishop = 3;
+        private const int rook = 5;
+        private const int queen = 9;
 
-        private const int POSITIVE_INFINITY = +999999;
-        private const int NEGATIVE_INFINITY = -999999;
+        private const int positiveInfinity = +999999;
+        private const int negativeInfinity = -999999;
 
         private int CountColor(Color color) {
             int result = 0;
-            result += game.GetPieceCount(Figure.Pawn, color) * PAWN;
-            result += game.GetPieceCount(Figure.Knight, color) * KNIGHT;
-            result += game.GetPieceCount(Figure.Bishop, color) * BISHOP;
-            result += game.GetPieceCount(Figure.Rook, color) * ROOK;
-            result += game.GetPieceCount(Figure.Queen, color) * QUEEN;
+            result += game.GetPieceCount(Figure.Pawn, color) * pawn;
+            result += game.GetPieceCount(Figure.Knight, color) * knight;
+            result += game.GetPieceCount(Figure.Bishop, color) * bishop;
+            result += game.GetPieceCount(Figure.Rook, color) * rook;
+            result += game.GetPieceCount(Figure.Queen, color) * queen;
             return result;
         }
 
@@ -114,12 +127,12 @@ namespace Chess {
         }
 
         private int GetPieceValue(Figure type) => type switch {
-            Figure.Pawn => PAWN,
-            Figure.Knight => KNIGHT,
-            Figure.Bishop => BISHOP,
-            Figure.Rook => ROOK,
-            Figure.Queen => QUEEN,
-            Figure.King => POSITIVE_INFINITY,
+            Figure.Pawn => pawn,
+            Figure.Knight => knight,
+            Figure.Bishop => bishop,
+            Figure.Rook => rook,
+            Figure.Queen => queen,
+            Figure.King => positiveInfinity,
             _ => throw new Exception("Invalid piece type.")
         };
 
@@ -135,10 +148,10 @@ namespace Chess {
 
                 if ((move.Flags & MoveFlags.Promotion) != MoveFlags.None) {
                     quess += move.Flags switch {
-                        MoveFlags.QueenPromotion => QUEEN,
-                        MoveFlags.RookPromotion => ROOK,
-                        MoveFlags.KnightPromotion => KNIGHT,
-                        MoveFlags.BishopPromotion => BISHOP,
+                        MoveFlags.QueenPromotion => queen,
+                        MoveFlags.RookPromotion => rook,
+                        MoveFlags.KnightPromotion => knight,
+                        MoveFlags.BishopPromotion => bishop,
                         _ => 0
                     };
                 }
@@ -176,7 +189,7 @@ namespace Chess {
             return alpha;
         }
 
-        private int Search(int depth, int alpha = NEGATIVE_INFINITY, int beta = POSITIVE_INFINITY) {
+        private int Search(int depth, int alpha = negativeInfinity, int beta = positiveInfinity) {
             if (depth == 0) {
                 return SearchAllCaptures(alpha, beta);
             }
@@ -184,7 +197,7 @@ namespace Chess {
             var newMoves = OrderMoves(game.GenerateMoves());
             if (newMoves.Count == 0) {
                 if (game.IsCheck()) {
-                    return NEGATIVE_INFINITY;
+                    return negativeInfinity;
                 }
 
                 return 0;
@@ -207,7 +220,7 @@ namespace Chess {
 
         private void MakeComputerMove() {
             Move? bestMove = null;
-            var bestValue = NEGATIVE_INFINITY;
+            var bestValue = negativeInfinity;
 
             var avaibleMoves = game.Moves;
 
@@ -291,11 +304,13 @@ namespace Chess {
                 Apply();
             }
 
-            if (Input.GetKeyDown(KeyCode.Slash) && !game.IsCheckmate())
+            if (Input.GetKeyDown(KeyCode.Slash) && !game.IsCheckmate()) {
                 MakeComputerMove();
+            }
 
-            if (!Input.GetMouseButtonDown(0))
+            if (!Input.GetMouseButtonDown(0)) {
                 return;
+            }
 
             var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             if (!Physics.Raycast(ray, out RaycastHit hitInfo)) {
@@ -312,6 +327,10 @@ namespace Chess {
             }
 
             OnSquare((square.z + 4) * 8 + square.x + 4);
+        }
+
+        private void OnDestroy() {
+            game.Dispose();
         }
     }
 }

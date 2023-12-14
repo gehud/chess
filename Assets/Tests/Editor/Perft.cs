@@ -1,11 +1,12 @@
 using Chess.Utilities;
 using NUnit.Framework;
+using Unity.Collections;
 
 namespace Chess.Tests.Editor {
     public class Perft {
         [Test]
         public void InitialPositionDepth1() {
-            var game = new Game();
+            using var game = new Game(Allocator.Persistent);
             game.Start();
 
             var nodes = PerftUtility.Perft(game, 1);
@@ -14,7 +15,7 @@ namespace Chess.Tests.Editor {
 
         [Test]
         public void InitialPositionDepth2() {
-            var game = new Game();
+            using var game = new Game(Allocator.Persistent);
             game.Start();
 
             var nodes = PerftUtility.Perft(game, 2);
@@ -23,7 +24,7 @@ namespace Chess.Tests.Editor {
 
         [Test]
         public void InitialPositionDepth3() {
-            var game = new Game();
+            using var game = new Game(Allocator.Persistent);
             game.Start();
 
             var nodes = PerftUtility.Perft(game, 3);
@@ -32,7 +33,7 @@ namespace Chess.Tests.Editor {
 
         [Test]
         public void InitialPositionDepth4() {
-            var game = new Game();
+            using var game = new Game(Allocator.Persistent);
             game.Start();
 
             var nodes = PerftUtility.Perft(game, 4);
@@ -41,7 +42,7 @@ namespace Chess.Tests.Editor {
 
         [Test]
         public void InitialPositionDepth5() {
-            var game = new Game();
+            using var game = new Game(Allocator.Persistent);
             game.Start();
 
             var nodes = PerftUtility.Perft(game, 5);

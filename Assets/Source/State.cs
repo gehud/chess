@@ -1,5 +1,5 @@
 ﻿namespace Chess {
-	public struct GameState {
+	public struct State {
 		public Move Move;
 		public Piece Captured;
 		public Move CastlingRook;

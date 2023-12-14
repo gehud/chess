@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Chess.UI {
 	public class Menu : MonoBehaviour {
 		[SerializeField]
-		private BoardView boardView;
+		private GameController boardView;
 		[SerializeField]
 		private GameObject panel;
 		[SerializeField]

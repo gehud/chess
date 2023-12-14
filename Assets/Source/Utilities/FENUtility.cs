@@ -11,7 +11,7 @@ namespace Chess.Utilities {
 			{ 'k', Figure.King },
 		};
 
-		public static void Load(string fen, Board board, ref GameState gameState, ref Color moveColor) {
+		public static void Load(string fen, Board board, ref State gameState, ref Color moveColor) {
 			var state = fen.Split(' ');
 			var squares = state[0];
 			int file = 0, rank = 7;
@@ -25,7 +25,7 @@ namespace Chess.Utilities {
 					} else {
 						var color = char.IsUpper(symbol) ? Color.White : Color.Black;
 						var type = pieceSybmolMap[char.ToLower(symbol)];
-						board[file + rank * Board.SIZE] = new Piece(type, color);
+						board[file + rank * Board.Size] = new Piece(type, color);
 						++file;
 					}
 				}
@@ -51,7 +51,7 @@ namespace Chess.Utilities {
 			if (twoSquarePawnKey != "-") {
 				file = twoSquarePawnKey[0] - 'a';
 				rank = (int)char.GetNumericValue(twoSquarePawnKey[1]) - 1;
-				gameState.TwoSquarePawn = file + rank * Board.SIZE;
+				gameState.TwoSquarePawn = file + rank * Board.Size;
 			}
 		}
 	}
