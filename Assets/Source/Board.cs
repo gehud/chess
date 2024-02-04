@@ -14,9 +14,15 @@ namespace Chess {
             set => squares[index] = value;
         }
 
+        public NativeArray<Piece> Squares => squares;
+
         private NativeArray<Piece> squares;
 
+        public NativeArray<int> MoveLimits => moveLimits;
+
         private NativeArray<int> moveLimits;
+
+        public NativeArray<int> SquareOffsets => squareOffsets;
 
         private NativeArray<int> squareOffsets;
 

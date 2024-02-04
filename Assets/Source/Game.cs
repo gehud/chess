@@ -3,7 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Unity.Collections;
+using Unity.Jobs;
 using UnityEngine;
+using UnityEngine.Assertions.Must;
 
 namespace Chess {
     public class Game : IDisposable {
@@ -102,29 +104,37 @@ namespace Chess {
 
         public bool IsCheckmate() => moves.Count == 0;
 
-        public List<Move> GenerateRawMoves(bool capturesOnly = false) {
-            moves = new List<Move>();
-            attackSquares.Clear();
+        public MoveGenerationJob GenerateRawMoves(bool capturesOnly = false) {
+            var job = MoveGenerationJob.Create(
+                moveColor, 
+                board.Squares,
+                board.SquareOffsets, 
+                board.MoveLimits,
+                state.TwoSquarePawn,
+                state.IsWhiteKingsideCastlingAvaible,
+                state.IsWhiteQueensideCastlingAvaible,
+                state.IsBlackKingsideCastlingAvaible,
+                state.IsBlackQueensideCastlingAvaible,
+                capturesOnly);
 
-            for (int i = 0; i < Board.Area; i++) {
-                if (board[i].Color == moveColor)
-                    SelectPresudoMove(i, capturesOnly);
-            }
-
-            return moves;
+            job.Schedule().Complete();
+            return job;
         }
 
         public List<Move> GenerateMoves(bool capturesOnly = false) {
-            var presudoMoves = GenerateRawMoves(capturesOnly);
+            var job = GenerateRawMoves(capturesOnly);
 
-            int myKing = this.myKing;
+            int myKing = job.MyKing;
 
             SwapMoveColor();
-            GenerateRawMoves();
+            var oponentJob = GenerateRawMoves();
+            oponentJob.Schedule().Complete();
             SwapMoveColor();
 
             UpdateLockedAndCheckSquares(myKing);
             moves = ValidateMoves(presudoMoves, myKing);
+
+            job.Dispose();
             return moves;
         }
 

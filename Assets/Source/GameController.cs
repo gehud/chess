@@ -77,7 +77,7 @@ namespace Chess {
             }
 
             //game.GenerateMoves();
-            game.GenerateRawMoves();
+            game.GenerateMoves();
             //GameOverCheck();
 
             //foreach (var item in attackSquares) {

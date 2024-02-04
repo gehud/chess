@@ -7,6 +7,10 @@ using UnityEngine;
 namespace Chess {
     [BurstCompile]
     public struct MoveGenerationJob : IJob, IDisposable {
+        public NativeList<Move> Moves => moves;
+
+        public NativeList<int> AttackSquares => attackSquares;
+
         public int MyKing;
         [ReadOnly]
         private bool isWhiteKingsideCastlingAvaible;
