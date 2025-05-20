@@ -31,16 +31,16 @@ namespace Chess
         [SerializeField]
         private Sprite blackKing;
 
-        public Sprite GetPieceSprite(Piece piece, Color color)
+        public Sprite GetPieceSprite(Figure figure, Color color)
         {
-            return piece switch
+            return figure switch
             {
-                Piece.Pawn => color == Color.White ? whitePawn : blackPawn,
-                Piece.Knight => color == Color.White ? whiteKnight : blackKnight,
-                Piece.Bishop => color == Color.White ? whiteBishop : blackBishop,
-                Piece.Rook => color == Color.White ? whiteRook : blackRook,
-                Piece.Queen => color == Color.White ? whiteQueen : blackQueen,
-                Piece.King => color == Color.White ? whiteKing : blackKing,
+                Figure.Pawn => color == Color.White ? whitePawn : blackPawn,
+                Figure.Knight => color == Color.White ? whiteKnight : blackKnight,
+                Figure.Bishop => color == Color.White ? whiteBishop : blackBishop,
+                Figure.Rook => color == Color.White ? whiteRook : blackRook,
+                Figure.Queen => color == Color.White ? whiteQueen : blackQueen,
+                Figure.King => color == Color.White ? whiteKing : blackKing,
                 _ => null,
             };
         }

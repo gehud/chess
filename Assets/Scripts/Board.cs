@@ -9,24 +9,25 @@ namespace Chess
         public const int Size = 8;
         public const int Area = Size * Size;
 
-        public Square this[Coordinate coordinate]
+        public Piece this[Square coordinate]
         {
-            get => squares[coordinate];
-            set => squares[coordinate] = value;
+            get => pieces[coordinate];
+            set => pieces[coordinate] = value;
         }
 
-        public Square this[int file, int rank]
+        public Piece this[int file, int rank]
         {
-            get => this[new Coordinate(file, rank)];
-            set => this[new Coordinate(file, rank)] = value;
+            get => this[new Square(file, rank)];
+            set => this[new Square(file, rank)] = value;
         }
 
-        private NativeArray<Square> squares;
+        private NativeArray<Piece> pieces;
         private NativeArray<int> moveLimits;
+        private NativeArray<int> squareOffsets;
 
         public Board(Allocator allocator)
         {
-            squares = new NativeArray<Square>(Area, allocator, NativeArrayOptions.UninitializedMemory);
+            pieces = new NativeArray<Piece>(Area, allocator, NativeArrayOptions.UninitializedMemory);
 
             moveLimits = new NativeArray<int>
             (
@@ -35,31 +36,52 @@ namespace Chess
                 NativeArrayOptions.UninitializedMemory
             );
 
-            for (var coordinate = Coordinate.Zero; coordinate < Area; coordinate++)
+            for (var square = Square.Zero; square < Area; square++)
             {
-                int file = coordinate.File;
-                int rank = coordinate.Rank;
+                int file = square.File;
+                int rank = square.Rank;
 
                 int northSquareCount = Size - 1 - rank;
                 int southSquareCount = rank;
                 int eastSquareCount = Size - 1 - file;
                 int westSquareCount = file;
 
-                moveLimits[coordinate + Area * 0] = northSquareCount;
-                moveLimits[coordinate + Area * 1] = southSquareCount;
-                moveLimits[coordinate + Area * 2] = eastSquareCount;
-                moveLimits[coordinate + Area * 3] = westSquareCount;
-                moveLimits[coordinate + Area * 4] = math.min(northSquareCount, westSquareCount);
-                moveLimits[coordinate + Area * 5] = math.min(southSquareCount, eastSquareCount);
-                moveLimits[coordinate + Area * 6] = math.min(northSquareCount, eastSquareCount);
-                moveLimits[coordinate + Area * 7] = math.min(southSquareCount, westSquareCount);
+                moveLimits[square + Area * 0] = northSquareCount;
+                moveLimits[square + Area * 1] = southSquareCount;
+                moveLimits[square + Area * 2] = eastSquareCount;
+                moveLimits[square + Area * 3] = westSquareCount;
+                moveLimits[square + Area * 4] = math.min(northSquareCount, westSquareCount);
+                moveLimits[square + Area * 5] = math.min(southSquareCount, eastSquareCount);
+                moveLimits[square + Area * 6] = math.min(northSquareCount, eastSquareCount);
+                moveLimits[square + Area * 7] = math.min(southSquareCount, westSquareCount);
             }
+
+            squareOffsets = new NativeArray<int>(8, allocator, NativeArrayOptions.UninitializedMemory);
+            squareOffsets[0] = 8;
+            squareOffsets[1] = -8;
+            squareOffsets[2] = 1;
+            squareOffsets[3] = -1;
+            squareOffsets[4] = 7;
+            squareOffsets[5] = -7;
+            squareOffsets[6] = 9;
+            squareOffsets[7] = -9;
+        }
+
+        public int GetBorderDistance(Square square, Direction direction)
+        {
+            return moveLimits[(int)square + ((int)direction - 1) * Area];
+        }
+
+        public Square GetTranslatedSquare(Square square, Direction direction, int distance = 1)
+        {
+            return (Square)(square + squareOffsets[(int)direction - 1] * distance);
         }
 
         public void Dispose()
         {
-            squares.Dispose();
+            pieces.Dispose();
             moveLimits.Dispose();
+            squareOffsets.Dispose();
         }
     }
 }

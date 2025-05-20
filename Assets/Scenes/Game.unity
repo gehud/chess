@@ -2334,6 +2334,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   lightColor: {r: 1, g: 0.8156863, b: 0.6313726, a: 1}
   darkColor: {r: 0.8235294, g: 0.54901963, b: 0.27058825, a: 1}
+  moveColor: {r: 0.20784314, g: 1, b: 0, a: 1}
   piecePrefab: {fileID: 4777394786376988639, guid: 726051981fc4bb8448a6e967735faed2, type: 3}
 --- !u!1001 &688099761
 PrefabInstance:

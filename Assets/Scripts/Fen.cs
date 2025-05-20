@@ -50,7 +50,7 @@ namespace Chess
                 return false;
             }
 
-            if (!TryParseEnPassantTargetCoordinate(ref state))
+            if (!TryParseEnPassantTargetSquare(ref state))
             {
                 return false;
             }
@@ -78,30 +78,30 @@ namespace Chess
             return true;
         }
 
-        private static bool TryParsePieceSymbol(char symbol, out Piece piece)
+        private static bool TryParseFigureSymbol(char symbol, out Figure figure)
         {
             switch (symbol)
             {
                 case 'p':
-                    piece = Piece.Pawn;
+                    figure = Figure.Pawn;
                     break;
                 case 'n':
-                    piece = Piece.Knight;
+                    figure = Figure.Knight;
                     break;
                 case 'b':
-                    piece = Piece.Bishop;
+                    figure = Figure.Bishop;
                     break;
                 case 'r':
-                    piece = Piece.Rook;
+                    figure = Figure.Rook;
                     break;
                 case 'q':
-                    piece = Piece.Queen;
+                    figure = Figure.Queen;
                     break;
                 case 'k':
-                    piece = Piece.King;
+                    figure = Figure.King;
                     break;
                 default:
-                    piece = Piece.None;
+                    figure = Figure.None;
                     return false;
             }
 
@@ -152,19 +152,19 @@ namespace Chess
                     {
                         for (var skip = 0; skip < (int)char.GetNumericValue(symbol); skip++)
                         {
-                            board[file++, rank] = Square.Empty;
+                            board[file++, rank] = Piece.Empty;
                         }
                     }
                     else
                     {
                         var color = char.IsUpper(symbol) ? Color.White : Color.Black;
 
-                        if (!TryParsePieceSymbol(char.ToLower(symbol), out var piece))
+                        if (!TryParseFigureSymbol(char.ToLower(symbol), out var figure))
                         {
                             return false;
                         }
 
-                        board[file, rank] = new Square(piece, color);
+                        board[file, rank] = new Piece(figure, color);
 
                         ++file;
                     }
@@ -249,11 +249,11 @@ namespace Chess
             }
         }
 
-        private bool TryParseEnPassantTargetCoordinate(ref State state)
+        private bool TryParseEnPassantTargetSquare(ref State state)
         {
             if (fen[cursor] == '-')
             {
-                state.EnPassantTargetCoordinate = -1;
+                state.EnPassantTargetSquare = -1;
                 ++cursor;
                 return true;
             }
@@ -274,7 +274,7 @@ namespace Chess
 
                 var rank = (int)(char.GetNumericValue((char)fen[cursor]) - 1);
 
-                state.EnPassantTargetCoordinate = new Coordinate(file, rank);
+                state.EnPassantTargetSquare = new Square(file, rank);
                 ++cursor;
                 return true;
             }

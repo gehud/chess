@@ -7,8 +7,12 @@
         public bool BlackCastlingKingside;
         public bool WhiteCastlingQueenside;
         public bool BlackCastlingQueenside;
-        public Coordinate EnPassantTargetCoordinate;
+        public Square EnPassantTargetSquare;
         public int ImmutableMoveCount;
         public int NextMoveIndex;
+
+        public Square KingSquare;
+        public Bitboard StraightSlidingPinning;
+        public Bitboard DiagonalSlidingPinning;
     }
 }

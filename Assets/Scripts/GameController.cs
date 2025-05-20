@@ -10,8 +10,14 @@ namespace Chess
 
         private Game game;
 
-        private void OnSquarePicked(GameObject square)
+        private void OnPiecePicked(GameObject pieceSlot)
         {
+            board.ShowMoves(pieceSlot, game.Moves);
+        }
+
+        private void OnPieceDroppped(Square from, Square to)
+        {
+            game.MakeMove(new Move(from, to));
         }
 
         private void Awake()
@@ -23,12 +29,14 @@ namespace Chess
 
         private void OnEnable()
         {
-            PickableSquare.Picked += OnSquarePicked;
+            DraggablePiece.Picked += OnPiecePicked;
+            PieceSlot.PieceDropped += OnPieceDroppped;
         }
 
         private void OnDisable()
         {
-            PickableSquare.Picked -= OnSquarePicked;
+            DraggablePiece.Picked -= OnPiecePicked;
+            PieceSlot.PieceDropped -= OnPieceDroppped;
         }
 
         private void OnDestroy()

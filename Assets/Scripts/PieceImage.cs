@@ -10,14 +10,14 @@ namespace Chess
         [SerializeField]
         private PieceSprites sprites;
 
-        public void UpdateImage(Square square)
+        public void UpdateImage(Piece piece)
         {
-            UpdateImage(square.Piece, square.Color);
+            UpdateImage(piece.Figure, piece.Color);
         }
 
-        public void UpdateImage(Piece piece, Color color)
+        public void UpdateImage(Figure figure, Color color)
         {
-            image.sprite = sprites.GetPieceSprite(piece, color);
+            image.sprite = sprites.GetPieceSprite(figure, color);
             image.enabled = image.sprite != null;
         }
     }

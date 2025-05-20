@@ -1,55 +1,57 @@
-﻿namespace Chess
+﻿using Unity.Collections;
+
+namespace Chess
 {
     public readonly struct Square
     {
-        public readonly bool IsEmpty => Piece == Piece.None;
+        public static Square Zero => new(0);
 
-        public static Square Empty => new(0);
+        public readonly bool IsValid => index >= 0 && index < Board.Area;
 
-        public readonly Piece Piece => (Piece)(value & 0b111);
+        public readonly int File => index % Board.Size;
 
-        public readonly Color Color => (Color)((value & 0b1000) >> 3);
+        public readonly int Rank => index / Board.Size;
 
-        private readonly int value;
+        private readonly int index;
 
-        private Square(int value)
+        private static readonly char[] fileNotations =
         {
-            this.value = value;
+            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'
+        };
+
+        public Square(int index)
+        {
+            this.index = index;
         }
 
-        public Square(Piece piece, Color color)
+        public Square(int file, int rank)
         {
-            value = (int)piece | ((int)color << 3);
+            index = rank * Board.Size + file;
         }
 
-        public static bool operator ==(Square left, Square right)
+        public Square Translated(in Board board, in Direction direction, int distance = 1)
         {
-            return left.value == right.value;
+            return board.GetTranslatedSquare(this, direction, distance);
         }
 
-        public static bool operator !=(Square left, Square right)
+        public Square GetBorderDistance(in Board board, in Direction direction)
         {
-            return left.value != right.value;
+            return board.GetBorderDistance(this, direction);
         }
 
-        public override readonly bool Equals(object @object)
+        public static implicit operator int(Square square)
         {
-            if (@object is not Square square)
-            {
-                return false;
-            }
-
-            return value == square.value;
+            return square.index;
         }
 
-        public override readonly int GetHashCode()
+        public static implicit operator Square(int index)
         {
-            return value;
+            return new Square(index);
         }
 
         public override readonly string ToString()
         {
-            return IsEmpty ? "Empty" : $"Piece: {Piece}, Color: {Color}";
+            return $"{fileNotations[File]}{Rank + 1}";
         }
     }
 }
