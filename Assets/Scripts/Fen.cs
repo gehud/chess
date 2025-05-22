@@ -5,12 +5,12 @@ namespace Chess
 {
     public struct Fen : IDisposable
     {
-        public static Fen Start => new("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        public const string Start = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
         private NativeText fen;
         private int cursor;
 
-        public Fen(string text, Allocator allocator = Allocator.Persistent)
+        public Fen(string text, Allocator allocator)
         {
             fen = new NativeText(text, allocator);
             cursor = 0;

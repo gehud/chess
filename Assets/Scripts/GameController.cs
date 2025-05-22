@@ -9,6 +9,7 @@ namespace Chess
         private BoardPainter board;
 
         private Game game;
+        private Controls controls;
 
         private void OnPiecePicked(GameObject pieceSlot)
         {
@@ -29,7 +30,14 @@ namespace Chess
             }
 
             game.MakeMove(actualMove);
+            game.GenerateMoves();
+            board.Repaint(game.Board);
+        }
 
+        private void UnmakeMove()
+        {
+            game.UnmakeMove();
+            game.GenerateMoves();
             board.Repaint(game.Board);
         }
 
@@ -37,19 +45,25 @@ namespace Chess
         {
             game = new Game(Allocator.Persistent);
             game.Start();
+            game.GenerateMoves();
             board.Repaint(game.Board);
+
+            controls = new();
+            controls.Player.Undo.performed += (ctx) => UnmakeMove();
         }
 
         private void OnEnable()
         {
             DraggablePiece.Picked += OnPiecePicked;
             PieceSlot.PieceDropped += OnPieceDroppped;
+            controls.Enable();
         }
 
         private void OnDisable()
         {
             DraggablePiece.Picked -= OnPiecePicked;
             PieceSlot.PieceDropped -= OnPieceDroppped;
+            controls.Disable();
         }
 
         private void OnDestroy()

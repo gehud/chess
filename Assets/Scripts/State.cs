@@ -11,6 +11,9 @@
         public int ImmutableMoveCount;
         public int NextMoveIndex;
 
+        public Move Move;
+        public Piece CapturedPiece;
         public Square AlliedKingSquare;
+        public Square EnemyKingSquare;
     }
 }

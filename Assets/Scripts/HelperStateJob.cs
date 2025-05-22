@@ -11,6 +11,8 @@ namespace Chess
         public Color MoveColor;
         [WriteOnly]
         public NativeReference<Square> AlliedKingSquare;
+        [WriteOnly]
+        public NativeReference<Square> EnemyKingSquare;
 
         public void Execute()
         {
@@ -23,7 +25,10 @@ namespace Chess
                     if (piece.Color == MoveColor)
                     {
                         AlliedKingSquare.Value = square;
-                        return;
+                    }
+                    else
+                    {
+                        EnemyKingSquare.Value = square;
                     }
                 }
             }

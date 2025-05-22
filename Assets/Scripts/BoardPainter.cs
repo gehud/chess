@@ -1,77 +1,66 @@
 ﻿using Unity.Collections;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace Chess
 {
     public class BoardPainter : MonoBehaviour
     {
         [SerializeField]
-        private UnityEngine.Color lightColor = UnityEngine.Color.white;
-        [SerializeField]
-        private UnityEngine.Color darkColor = UnityEngine.Color.black;
-        [SerializeField]
-        private UnityEngine.Color moveColor = UnityEngine.Color.green;
-        [SerializeField]
         private PieceImage piecePrefab;
 
         public void Repaint(in Board board)
         {
-            if (transform.childCount != Board.Area)
+            AssertSquares();
+
+            for (var i = Square.Zero; i < Board.Area; i++)
             {
-                return;
-            }
+                var square = transform.GetChild(i);
 
-            ResetSquares();
-
-            for (var square = Square.Zero; square < Board.Area; square++)
-            {
-                var pieceSlot = transform.GetChild(square);
-
-                if (pieceSlot.childCount != 0)
+                if (square.childCount != 0)
                 {
-                    Destroy(pieceSlot.GetChild(0).gameObject);
+                    DestroyImmediate(square.GetChild(0).gameObject);
                 }
 
-                if (board[square].IsEmpty)
+                if (board[i].IsEmpty)
                 {
                     continue;
                 }
 
-                var pieceImage = Instantiate(piecePrefab, pieceSlot);
-                pieceImage.UpdateImage(board[square]);
+                var pieceImage = Instantiate(piecePrefab, square);
+                pieceImage.UpdateImage(board[i]);
             }
+
+            ResetSquares();
         }
 
         public void ShowMoves(GameObject pieceSlot, in NativeList<Move> moves)
         {
-            var square = (Square)pieceSlot.transform.GetSiblingIndex();
-
             foreach (var move in moves)
             {
-                if (move.From == square)
+                if (move.From == pieceSlot.transform.GetSiblingIndex())
                 {
-                    var slot = transform.GetChild(move.To);
-                    slot.GetComponent<Image>().color *= moveColor;
-                    slot.GetComponent<PieceSlot>().IsAvailable = true;
+                    var square = transform.GetChild(move.To);
+                    square.GetComponent<SquareImage>().SetAvailableColor();
+                    square.GetComponent<PieceSlot>().IsAvailable = true;
                 }
             }
         }
 
         public void ResetSquares()
         {
-            if (transform.childCount != Board.Area)
-            {
-                return;
-            }
+            AssertSquares();
 
-            for (var square = Square.Zero; square < Board.Area; square++)
+            for (var i = Square.Zero; i < Board.Area; i++)
             {
-                var isLight = (square.File + square.Rank) % 2 != 0;
-                var slot = transform.GetChild(square);
-                slot.GetComponent<Image>().color = isLight ? lightColor : darkColor;
-                slot.GetComponent<PieceSlot>().IsAvailable = false;
+                var square = transform.GetChild(i);
+                square.GetComponent<SquareImage>().SetDefaultColor();
+                square.GetComponent<PieceSlot>().IsAvailable = false;
             }
+        }
+
+        private void AssertSquares()
+        {
+            Debug.Assert(transform.childCount == Board.Area, "Board squares is out of range.");
         }
 
         private void Awake()

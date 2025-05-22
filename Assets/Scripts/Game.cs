@@ -1,7 +1,6 @@
 using System;
 using Unity.Collections;
 using Unity.Jobs;
-using UnityEngine;
 
 namespace Chess
 {
@@ -10,53 +9,61 @@ namespace Chess
         public NativeList<Move> Moves;
         public Board Board;
         private State State;
+        private NativeList<State> history;
 
         public Game(Allocator allocator)
         {
             Moves = new NativeList<Move>(allocator);
             Board = new Board(allocator);
-            State = new State();
+            State = default;
+            history = new NativeList<State>(allocator);
         }
 
         public void Start()
         {
-            var fen = Fen.Start;
-            Load(fen);
-            fen.Dispose();
+            Load(Fen.Start);
         }
 
         public void Load(in Fen fen)
         {
             fen.Load(ref Board, ref State);
-
             UpdateHelpersState();
+        }
 
-            GenerateMoves();
+        public void Load(string fen)
+        {
+            var parser = new Fen(fen, Allocator.Temp);
+            Load(parser);
+            parser.Dispose();
         }
 
         private void UpdateHelpersState()
         {
             var alliedKingSquare = new NativeReference<Square>(Allocator.TempJob);
+            var enemyKingSquare = new NativeReference<Square>(Allocator.TempJob);
 
             var job = new HelperStateJob
             {
                 Board = Board,
                 MoveColor = State.MoveColor,
                 AlliedKingSquare = alliedKingSquare,
+                EnemyKingSquare = enemyKingSquare,
             };
 
             job.Schedule().Complete();
 
             State.AlliedKingSquare = job.AlliedKingSquare.Value;
+            State.EnemyKingSquare = job.EnemyKingSquare.Value;
 
             alliedKingSquare.Dispose();
+            enemyKingSquare.Dispose();
         }
 
         public void GenerateMoves()
         {
             Moves.Clear();
 
-            new MoveJob
+            new MovesJob
             {
                 Moves = Moves,
                 Board = Board,
@@ -66,66 +73,76 @@ namespace Chess
 
         public void MakeMove(Move move)
         {
+            var state = State;
+
+            state.Move = move;
+            state.CapturedPiece = Board[move.To];
+
             Board[move.To] = Board[move.From];
             Board[move.From] = Piece.Empty;
 
-            if (move.From == State.AlliedKingSquare || (move.Flags & MoveFlags.Castling) != MoveFlags.None)
+            if (move.From == state.AlliedKingSquare)
             {
-                switch (State.MoveColor)
+                state.AlliedKingSquare = move.To;
+            }
+
+            if (move.From == state.AlliedKingSquare || (move.Flags & MoveFlags.Castling) != MoveFlags.None)
+            {
+                switch (state.MoveColor)
                 {
                     case Color.Black:
-                        State.BlackCastlingKingside = false;
-                        State.BlackCastlingQueenside = false;
+                        state.BlackCastlingKingside = false;
+                        state.BlackCastlingQueenside = false;
                         break;
                     case Color.White:
-                        State.WhiteCastlingKingside = false;
-                        State.WhiteCastlingQueenside = false;
+                        state.WhiteCastlingKingside = false;
+                        state.WhiteCastlingQueenside = false;
                         break;
                 }
             }
 
             if (move.From == new Square(0, 0) || move.To == new Square(0, 0))
             {
-                State.WhiteCastlingQueenside = false;
+                state.WhiteCastlingQueenside = false;
             }
             else if (move.From == new Square(7, 0) || move.To == new Square(7, 0))
             {
-                State.WhiteCastlingKingside = false;
+                state.WhiteCastlingKingside = false;
             }
             else if (move.From == new Square(0, 7) || move.To == new Square(0, 7))
             {
-                State.BlackCastlingQueenside = false;
+                state.BlackCastlingQueenside = false;
             }
             else if (move.From == new Square(7, 7) || move.To == new Square(7, 7))
             {
-                State.BlackCastlingKingside = false;
+                state.BlackCastlingKingside = false;
             }
 
             if ((move.Flags & MoveFlags.DoublePawnMove) != MoveFlags.None)
             {
-                State.DoubleMovePawnSquare = move.To;
+                state.DoubleMovePawnSquare = move.To;
             }
             else if ((move.Flags & MoveFlags.EnPassant) != MoveFlags.None)
             {
-                Board[State.DoubleMovePawnSquare] = Piece.Empty;
+                Board[state.DoubleMovePawnSquare] = Piece.Empty;
             }
             else if ((move.Flags & MoveFlags.CastlingKingside) != MoveFlags.None)
             {
-                switch (State.MoveColor)
+                switch (state.MoveColor)
                 {
                     case Color.Black:
                         Board[5, 7] = Board[7, 7];
                         Board[7, 7] = Piece.Empty;
                         break;
                     case Color.White:
-                        Board[5, 0] = Board[0, 7];
-                        Board[0, 7] = Piece.Empty;
+                        Board[5, 0] = Board[7, 0];
+                        Board[7, 0] = Piece.Empty;
                         break;
                 }
             }
             else if ((move.Flags & MoveFlags.CastlingQueenside) != MoveFlags.None)
             {
-                switch (State.MoveColor)
+                switch (state.MoveColor)
                 {
                     case Color.Black:
                         Board[3, 7] = Board[0, 7];
@@ -139,20 +156,77 @@ namespace Chess
             }
             else if ((move.Flags & MoveFlags.Promotion) != MoveFlags.None)
             {
-                Board[move.To] = new Piece(Figure.Queen, State.MoveColor);
+                Board[move.To] = new Piece(Figure.Queen, state.MoveColor);
             }
 
+            history.Add(state);
+
+            State = state;
             State.MoveColor = State.MoveColor == Color.White ? Color.Black : Color.White;
+            ++State.NextMoveIndex;
+            (State.AlliedKingSquare, State.EnemyKingSquare) = (State.EnemyKingSquare, State.AlliedKingSquare);
+        }
 
-            UpdateHelpersState();
+        public void UnmakeMove()
+        {
+            if (history.IsEmpty)
+            {
+                return;
+            }
 
-            GenerateMoves();
+            var lastState = history[^1];
+            history.RemoveAt(history.Length - 1);
+
+            var lastMove = lastState.Move;
+
+            Board[lastMove.From] = Board[lastMove.To];
+            Board[lastMove.To] = lastState.CapturedPiece;
+
+            if ((lastMove.Flags & MoveFlags.Promotion) != MoveFlags.None)
+            {
+                Board[lastMove.From] = new Piece(Figure.Pawn, lastState.MoveColor);
+            }
+            else if ((lastMove.Flags & MoveFlags.EnPassant) != MoveFlags.None)
+            {
+                Board[lastState.DoubleMovePawnSquare] = new Piece(Figure.Pawn, State.MoveColor);
+            }
+            else if ((lastMove.Flags & MoveFlags.CastlingKingside) != MoveFlags.None)
+            {
+                switch (lastState.MoveColor)
+                {
+                    case Color.Black:
+                        Board[7, 7] = Board[5, 7];
+                        Board[5, 7] = Piece.Empty;
+                        break;
+                    case Color.White:
+                        Board[7, 0] = Board[5, 0];
+                        Board[5, 0] = Piece.Empty;
+                        break;
+                }
+            }
+            else if ((lastMove.Flags & MoveFlags.CastlingQueenside) != MoveFlags.None)
+            {
+                switch (lastState.MoveColor)
+                {
+                    case Color.Black:
+                        Board[0, 7] = Board[3, 7];
+                        Board[3, 7] = Piece.Empty;
+                        break;
+                    case Color.White:
+                        Board[0, 0] = Board[3, 0];
+                        Board[3, 0] = Piece.Empty;
+                        break;
+                }
+            }
+
+            State = lastState;
         }
 
         public void Dispose()
         {
             Moves.Dispose();
             Board.Dispose();
+            history.Dispose();
         }
     }
 }

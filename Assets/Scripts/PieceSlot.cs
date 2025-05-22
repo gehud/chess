@@ -25,7 +25,7 @@ namespace Chess
 
             if (transform.childCount != 0)
             {
-                Destroy(transform.GetChild(0).gameObject);
+                DestroyImmediate(transform.GetChild(0).gameObject);
             }
 
             eventData.pointerDrag.transform.SetParent(transform);

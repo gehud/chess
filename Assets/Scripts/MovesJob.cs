@@ -1,10 +1,9 @@
 ﻿using Unity.Collections;
 using Unity.Jobs;
-using UnityEngine;
 
 namespace Chess
 {
-    public struct MoveJob : IJob
+    public struct MovesJob : IJob
     {
         [ReadOnly]
         public State State;
