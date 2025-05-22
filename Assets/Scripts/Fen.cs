@@ -253,7 +253,7 @@ namespace Chess
         {
             if (fen[cursor] == '-')
             {
-                state.EnPassantTargetSquare = -1;
+                state.DoubleMovePawnSquare = -1;
                 ++cursor;
                 return true;
             }
@@ -274,7 +274,7 @@ namespace Chess
 
                 var rank = (int)(char.GetNumericValue((char)fen[cursor]) - 1);
 
-                state.EnPassantTargetSquare = new Square(file, rank);
+                state.DoubleMovePawnSquare = new Square(file, rank);
                 ++cursor;
                 return true;
             }

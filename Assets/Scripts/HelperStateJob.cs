@@ -3,47 +3,28 @@ using Unity.Jobs;
 
 namespace Chess
 {
-    public struct HelperStateJob : IJobFor
+    public struct HelperStateJob : IJob
     {
         [ReadOnly]
         public Board Board;
         [ReadOnly]
         public Color MoveColor;
         [WriteOnly]
-        public Square KingSquare;
-        [WriteOnly]
-        public Bitboard StraightSlidingPinning;
-        [WriteOnly]
-        public Bitboard DiagonalSlidingPinning;
+        public NativeReference<Square> AlliedKingSquare;
 
-        public void Execute(int index)
+        public void Execute()
         {
-            var square = (Square)index;
-
-            var piece = Board[square];
-
-            if (piece.IsEmpty)
+            for (var square = Square.Zero; square < Board.Area; square++)
             {
-                return;
-            }
+                var piece = Board[square];
 
-            if (piece.Color == MoveColor)
-            {
                 if (piece.Figure == Figure.King)
                 {
-                    KingSquare = square;
-                }
-            }
-            else
-            {
-                switch (piece.Figure)
-                {
-                    case Figure.Bishop | Figure.Queen:
-                        DiagonalSlidingPinning[square] = true;
-                        break;
-                    case Figure.Rook | Figure.Queen:
-                        StraightSlidingPinning[square] = true;
-                        break;
+                    if (piece.Color == MoveColor)
+                    {
+                        AlliedKingSquare.Value = square;
+                        return;
+                    }
                 }
             }
         }

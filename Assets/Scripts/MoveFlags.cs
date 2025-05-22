@@ -14,5 +14,9 @@ namespace Chess
         WhiteEnPassant = 1 << 4,
         BlackEnPassant = 1 << 5,
         EnPassant = WhiteEnPassant | BlackEnPassant,
+        CastlingKingside = 1 << 6,
+        CastlingQueenside = 1 << 7,
+        Castling = CastlingKingside | CastlingQueenside,
+        DoublePawnMove = 1 << 8,
     }
 }

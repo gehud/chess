@@ -17,7 +17,20 @@ namespace Chess
 
         private void OnPieceDroppped(Square from, Square to)
         {
-            game.MakeMove(new Move(from, to));
+            var actualMove = default(Move);
+
+            foreach (var move in game.Moves)
+            {
+                if (move.From == from && move.To == to)
+                {
+                    actualMove = move;
+                    break;
+                }
+            }
+
+            game.MakeMove(actualMove);
+
+            board.Repaint(game.Board);
         }
 
         private void Awake()

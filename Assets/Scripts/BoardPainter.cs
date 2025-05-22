@@ -22,22 +22,24 @@ namespace Chess
                 return;
             }
 
+            ResetSquares();
+
             for (var square = Square.Zero; square < Board.Area; square++)
             {
                 var pieceSlot = transform.GetChild(square);
 
+                if (pieceSlot.childCount != 0)
+                {
+                    Destroy(pieceSlot.GetChild(0).gameObject);
+                }
+
                 if (board[square].IsEmpty)
                 {
-                    if (pieceSlot.childCount != 0)
-                    {
-                        Destroy(pieceSlot.GetChild(0).gameObject);
-                    }
+                    continue;
                 }
-                else
-                {
-                    var pieceImage = Instantiate(piecePrefab, pieceSlot);
-                    pieceImage.UpdateImage(board[square]);
-                }
+
+                var pieceImage = Instantiate(piecePrefab, pieceSlot);
+                pieceImage.UpdateImage(board[square]);
             }
         }
 
@@ -72,11 +74,6 @@ namespace Chess
             }
         }
 
-        private void OnPieceDropped(Square from, Square to)
-        {
-            ResetSquares();
-        }
-
         private void Awake()
         {
             ResetSquares();
@@ -84,13 +81,11 @@ namespace Chess
 
         private void OnEnable()
         {
-            PieceSlot.PieceDropped += OnPieceDropped;
             DraggablePiece.Reverted += ResetSquares;
         }
 
         private void OnDisable()
         {
-            PieceSlot.PieceDropped -= OnPieceDropped;
             DraggablePiece.Reverted -= ResetSquares;
         }
 

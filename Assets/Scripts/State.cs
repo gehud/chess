@@ -7,12 +7,10 @@
         public bool BlackCastlingKingside;
         public bool WhiteCastlingQueenside;
         public bool BlackCastlingQueenside;
-        public Square EnPassantTargetSquare;
+        public Square DoubleMovePawnSquare;
         public int ImmutableMoveCount;
         public int NextMoveIndex;
 
-        public Square KingSquare;
-        public Bitboard StraightSlidingPinning;
-        public Bitboard DiagonalSlidingPinning;
+        public Square AlliedKingSquare;
     }
 }

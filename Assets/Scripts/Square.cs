@@ -1,6 +1,4 @@
-﻿using Unity.Collections;
-
-namespace Chess
+﻿namespace Chess
 {
     public readonly struct Square
     {
@@ -34,7 +32,7 @@ namespace Chess
             return board.GetTranslatedSquare(this, direction, distance);
         }
 
-        public Square GetBorderDistance(in Board board, in Direction direction)
+        public int GetBorderDistance(in Board board, in Direction direction)
         {
             return board.GetBorderDistance(this, direction);
         }
