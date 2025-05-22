@@ -28,6 +28,15 @@ namespace Chess.Tests
 
             if (depth == 1)
             {
+#if PERFT_DEBUG_MOVES
+                if (debug)
+                {
+                    foreach (var move in game.Moves)
+                    {
+                        UnityEngine.Debug.Log($"{move}: 1");
+                    }
+                }
+#endif
                 return game.Moves.Length;
             }
 

@@ -50,7 +50,7 @@ namespace Chess
                 return false;
             }
 
-            if (!TryParseEnPassantTargetSquare(ref state))
+            if (!TryParseDoubleMovePawnSquare(ref state))
             {
                 return false;
             }
@@ -224,7 +224,6 @@ namespace Chess
 
                     if (symbol == ' ')
                     {
-                        ++cursor;
                         return true;
                     }
                     else if (symbol == 'K')
@@ -249,7 +248,7 @@ namespace Chess
             }
         }
 
-        private bool TryParseEnPassantTargetSquare(ref State state)
+        private bool TryParseDoubleMovePawnSquare(ref State state)
         {
             if (fen[cursor] == '-')
             {

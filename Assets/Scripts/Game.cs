@@ -6,16 +6,18 @@ namespace Chess
 {
     public struct Game : IDisposable
     {
+        public State State => state;
+
         public NativeList<Move> Moves;
         public Board Board;
-        private State State;
+        private State state;
         private NativeList<State> history;
 
         public Game(Allocator allocator)
         {
             Moves = new NativeList<Move>(allocator);
             Board = new Board(allocator);
-            State = default;
+            state = default;
             history = new NativeList<State>(allocator);
         }
 
@@ -26,7 +28,7 @@ namespace Chess
 
         public void Load(in Fen fen)
         {
-            fen.Load(ref Board, ref State);
+            fen.Load(ref Board, ref state);
             UpdateHelpersState();
         }
 
@@ -45,15 +47,15 @@ namespace Chess
             var job = new HelperStateJob
             {
                 Board = Board,
-                MoveColor = State.MoveColor,
+                MoveColor = state.MoveColor,
                 AlliedKingSquare = alliedKingSquare,
                 EnemyKingSquare = enemyKingSquare,
             };
 
             job.Schedule().Complete();
 
-            State.AlliedKingSquare = job.AlliedKingSquare.Value;
-            State.EnemyKingSquare = job.EnemyKingSquare.Value;
+            state.AlliedKingSquare = job.AlliedKingSquare.Value;
+            state.EnemyKingSquare = job.EnemyKingSquare.Value;
 
             alliedKingSquare.Dispose();
             enemyKingSquare.Dispose();
@@ -67,13 +69,13 @@ namespace Chess
             {
                 Moves = Moves,
                 Board = Board,
-                State = State,
+                State = state,
             }.Schedule().Complete();
         }
 
         public void MakeMove(Move move)
         {
-            var state = State;
+            history.Add(state);
 
             state.Move = move;
             state.CapturedPiece = Board[move.To];
@@ -159,12 +161,9 @@ namespace Chess
                 Board[move.To] = new Piece(Figure.Queen, state.MoveColor);
             }
 
-            history.Add(state);
-
-            State = state;
-            State.MoveColor = State.MoveColor == Color.White ? Color.Black : Color.White;
-            ++State.NextMoveIndex;
-            (State.AlliedKingSquare, State.EnemyKingSquare) = (State.EnemyKingSquare, State.AlliedKingSquare);
+            state.MoveColor = state.MoveColor == Color.White ? Color.Black : Color.White;
+            ++state.NextMoveIndex;
+            (state.AlliedKingSquare, state.EnemyKingSquare) = (state.EnemyKingSquare, state.AlliedKingSquare);
         }
 
         public void UnmakeMove()
@@ -174,25 +173,24 @@ namespace Chess
                 return;
             }
 
-            var lastState = history[^1];
-            history.RemoveAt(history.Length - 1);
+            var move = state.Move;
 
-            var lastMove = lastState.Move;
+            Board[move.From] = Board[move.To];
+            Board[move.To] = state.CapturedPiece;
 
-            Board[lastMove.From] = Board[lastMove.To];
-            Board[lastMove.To] = lastState.CapturedPiece;
+            var lastMoveColor = state.MoveColor == Color.White ? Color.Black : Color.White;
 
-            if ((lastMove.Flags & MoveFlags.Promotion) != MoveFlags.None)
+            if ((move.Flags & MoveFlags.Promotion) != MoveFlags.None)
             {
-                Board[lastMove.From] = new Piece(Figure.Pawn, lastState.MoveColor);
+                Board[move.From] = new Piece(Figure.Pawn, lastMoveColor);
             }
-            else if ((lastMove.Flags & MoveFlags.EnPassant) != MoveFlags.None)
+            else if ((move.Flags & MoveFlags.EnPassant) != MoveFlags.None)
             {
-                Board[lastState.DoubleMovePawnSquare] = new Piece(Figure.Pawn, State.MoveColor);
+                Board[state.DoubleMovePawnSquare] = new Piece(Figure.Pawn, state.MoveColor);
             }
-            else if ((lastMove.Flags & MoveFlags.CastlingKingside) != MoveFlags.None)
+            else if ((move.Flags & MoveFlags.CastlingKingside) != MoveFlags.None)
             {
-                switch (lastState.MoveColor)
+                switch (lastMoveColor)
                 {
                     case Color.Black:
                         Board[7, 7] = Board[5, 7];
@@ -204,9 +202,9 @@ namespace Chess
                         break;
                 }
             }
-            else if ((lastMove.Flags & MoveFlags.CastlingQueenside) != MoveFlags.None)
+            else if ((move.Flags & MoveFlags.CastlingQueenside) != MoveFlags.None)
             {
-                switch (lastState.MoveColor)
+                switch (lastMoveColor)
                 {
                     case Color.Black:
                         Board[0, 7] = Board[3, 7];
@@ -219,7 +217,8 @@ namespace Chess
                 }
             }
 
-            State = lastState;
+            state = history[^1];
+            history.RemoveAt(history.Length - 1);
         }
 
         public void Dispose()

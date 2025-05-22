@@ -7,6 +7,8 @@ namespace Chess
     {
         [SerializeField]
         private BoardPainter board;
+        [SerializeField]
+        private string fen;
 
         private Game game;
         private Controls controls;
@@ -44,7 +46,16 @@ namespace Chess
         private void Awake()
         {
             game = new Game(Allocator.Persistent);
-            game.Start();
+
+            if (string.IsNullOrEmpty(fen))
+            {
+                game.Start();
+            }
+            else
+            {
+                game.Load(fen);
+            }
+
             game.GenerateMoves();
             board.Repaint(game.Board);
 
