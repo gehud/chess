@@ -6,7 +6,7 @@ namespace Chess
 {
     public struct Game : IDisposable
     {
-        public State State => state;
+        public readonly State State => state;
 
         public NativeList<Move> Moves;
         public Board Board;
@@ -120,15 +120,22 @@ namespace Chess
                 state.BlackCastlingKingside = false;
             }
 
+
+            if ((move.Flags & MoveFlags.EnPassant) != MoveFlags.None)
+            {
+                Board[state.DoubleMovePawnSquare] = Piece.Empty;
+            }
+
             if ((move.Flags & MoveFlags.DoublePawnMove) != MoveFlags.None)
             {
                 state.DoubleMovePawnSquare = move.To;
             }
-            else if ((move.Flags & MoveFlags.EnPassant) != MoveFlags.None)
+            else
             {
-                Board[state.DoubleMovePawnSquare] = Piece.Empty;
+                state.DoubleMovePawnSquare = -1;
             }
-            else if ((move.Flags & MoveFlags.CastlingKingside) != MoveFlags.None)
+
+            if ((move.Flags & MoveFlags.CastlingKingside) != MoveFlags.None)
             {
                 switch (state.MoveColor)
                 {
@@ -173,8 +180,6 @@ namespace Chess
                 Board[move.To] = new Piece(Figure.Bishop, state.MoveColor);
             }
 
-            state.DoubleMovePawnSquare = -1;
-
             state.MoveColor = state.MoveColor == Color.White ? Color.Black : Color.White;
             ++state.NextMoveIndex;
             (state.AlliedKingSquare, state.EnemyKingSquare) = (state.EnemyKingSquare, state.AlliedKingSquare);
@@ -192,7 +197,9 @@ namespace Chess
             Board[move.From] = Board[move.To];
             Board[move.To] = state.CapturedPiece;
 
-            var lastMoveColor = state.MoveColor == Color.White ? Color.Black : Color.White;
+            var lastState = history[^1];
+
+            var lastMoveColor = lastState.MoveColor;
 
             if ((move.Flags & MoveFlags.Promotion) != MoveFlags.None)
             {
@@ -200,7 +207,7 @@ namespace Chess
             }
             else if ((move.Flags & MoveFlags.EnPassant) != MoveFlags.None)
             {
-                Board[state.DoubleMovePawnSquare] = new Piece(Figure.Pawn, state.MoveColor);
+                Board[lastState.DoubleMovePawnSquare] = new Piece(Figure.Pawn, state.MoveColor);
             }
             else if ((move.Flags & MoveFlags.CastlingKingside) != MoveFlags.None)
             {
@@ -231,7 +238,7 @@ namespace Chess
                 }
             }
 
-            state = history[^1];
+            state = lastState;
             history.RemoveAt(history.Length - 1);
         }
 

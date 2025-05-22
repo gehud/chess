@@ -123,13 +123,13 @@ namespace Chess
                 var distance = State.AlliedKingSquare.GetBorderDistance(Board, direction);
                 var isPinBlocked = false;
                 var line = default(Bitboard);
+                var doubleMovePawnFound = false;
 
                 for (var i = 1; i <= distance; i++)
                 {
                     var targetSquare = State.AlliedKingSquare.Translated(Board, direction, i);
                     line.Include(targetSquare);
                     var targetPiece = Board[targetSquare];
-                    var doubleMovePawnFound = false;
 
                     if (!targetPiece.IsEmpty)
                     {
