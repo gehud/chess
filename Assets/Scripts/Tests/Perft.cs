@@ -22,7 +22,7 @@ namespace Chess.Tests
             Assert.AreEqual(nodes, Search(depth));
         }
 
-        private int Search(int depth)
+        private int Search(int depth, bool debug = true)
         {
             game.GenerateMoves();
 
@@ -38,7 +38,14 @@ namespace Chess.Tests
             for (var i = 0; i < moves.Length; i++)
             {
                 game.MakeMove(moves[i]);
-                count += Search(depth - 1);
+                var innerCount = Search(depth - 1, false);
+                count += innerCount;
+#if PERFT_DEBUG_MOVES
+                if (debug) 
+                {
+                    UnityEngine.Debug.Log($"{moves[i]}: {innerCount}");
+                }
+#endif
                 game.UnmakeMove();
             }
 
