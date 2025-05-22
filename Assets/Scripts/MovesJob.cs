@@ -144,7 +144,11 @@ namespace Chess
                         }
                         else
                         {
-                            if (targetPiece.Figure.IsSliding())
+                            var targetFigure = targetPiece.Figure;
+
+                            var isPinned = IsPinningDirection(direction, targetFigure);
+
+                            if (isPinned)
                             {
                                 if (isPinBlocked)
                                 {
@@ -190,6 +194,14 @@ namespace Chess
             pinSquares.Union(pinSquaresVertical);
             pinSquares.Union(pinSquaresRightDiagonal);
             pinSquares.Union(pinSquaresLeftDiagonal);
+        }
+
+        private readonly bool IsPinningDirection(Direction direction, Figure figure)
+        {
+            return direction >= Direction.NorthWest
+                && figure == Figure.Bishop
+                || figure == Figure.Rook
+                || figure == Figure.Queen;
         }
 
         private void FindSlidingValidationSquares(Square square, Direction startDirection, Direction endDirection)
