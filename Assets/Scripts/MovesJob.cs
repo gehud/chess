@@ -22,6 +22,7 @@ namespace Chess
         private Bitboard pinSquaresVertical;
         private Bitboard pinSquaresRightDiagonal;
         private Bitboard pinSquaresLeftDiagonal;
+        private bool isEnPassantPinned;
         private Bitboard pinSquares;
         private bool isInCheck;
         private bool isInDoubleCheck;
@@ -128,6 +129,7 @@ namespace Chess
                     var targetSquare = State.AlliedKingSquare.Translated(Board, direction, i);
                     line.Include(targetSquare);
                     var targetPiece = Board[targetSquare];
+                    var doubleMovePawnFound = false;
 
                     if (!targetPiece.IsEmpty)
                     {
@@ -144,12 +146,24 @@ namespace Chess
                         }
                         else
                         {
+                            if (targetSquare == State.DoubleMovePawnSquare)
+                            {
+                                doubleMovePawnFound = true;
+                                continue;
+                            }
+
                             var targetFigure = targetPiece.Figure;
 
-                            var isPinned = IsPinningDirection(direction, targetFigure);
+                            var isPinning = IsPinningDirection(direction, targetFigure);
 
-                            if (isPinned)
+                            if (isPinning)
                             {
+                                if (doubleMovePawnFound)
+                                {
+                                    isEnPassantPinned = true;
+                                    break;
+                                }
+
                                 if (isPinBlocked)
                                 {
                                     switch (direction)
@@ -520,6 +534,11 @@ namespace Chess
                 {
                     Moves.Add(new Move(from, to));
                 }
+            }
+
+            if (isEnPassantPinned)
+            {
+                return;
             }
 
             var enPassantSquare = -1;

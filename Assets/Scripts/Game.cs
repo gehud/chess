@@ -83,11 +83,6 @@ namespace Chess
             Board[move.To] = Board[move.From];
             Board[move.From] = Piece.Empty;
 
-            if (move.From == state.AlliedKingSquare)
-            {
-                state.AlliedKingSquare = move.To;
-            }
-
             if (move.From == state.AlliedKingSquare || (move.Flags & MoveFlags.Castling) != MoveFlags.None)
             {
                 switch (state.MoveColor)
@@ -101,6 +96,11 @@ namespace Chess
                         state.WhiteCastlingQueenside = false;
                         break;
                 }
+            }
+
+            if (move.From == state.AlliedKingSquare)
+            {
+                state.AlliedKingSquare = move.To;
             }
 
             if (move.From == new Square(0, 0) || move.To == new Square(0, 0))
@@ -156,10 +156,24 @@ namespace Chess
                         break;
                 }
             }
-            else if ((move.Flags & MoveFlags.Promotion) != MoveFlags.None)
+            else if ((move.Flags & MoveFlags.QueenPromotion) != MoveFlags.None)
             {
                 Board[move.To] = new Piece(Figure.Queen, state.MoveColor);
             }
+            else if ((move.Flags & MoveFlags.RookPromotion) != MoveFlags.None)
+            {
+                Board[move.To] = new Piece(Figure.Rook, state.MoveColor);
+            }
+            else if ((move.Flags & MoveFlags.KnightPromotion) != MoveFlags.None)
+            {
+                Board[move.To] = new Piece(Figure.Knight, state.MoveColor);
+            }
+            else if ((move.Flags & MoveFlags.BishopPromotion) != MoveFlags.None)
+            {
+                Board[move.To] = new Piece(Figure.Bishop, state.MoveColor);
+            }
+
+            state.DoubleMovePawnSquare = -1;
 
             state.MoveColor = state.MoveColor == Color.White ? Color.Black : Color.White;
             ++state.NextMoveIndex;
