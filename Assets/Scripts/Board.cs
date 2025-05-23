@@ -31,7 +31,7 @@ namespace Chess
 
             moveLimits = new NativeArray<int>
             (
-                Area * (int)Direction.SouthWest,
+                Area * 8,
                 allocator,
                 NativeArrayOptions.UninitializedMemory
             );
@@ -48,8 +48,8 @@ namespace Chess
 
                 moveLimits[square + Area * 0] = northSquareCount;
                 moveLimits[square + Area * 1] = southSquareCount;
-                moveLimits[square + Area * 2] = eastSquareCount;
-                moveLimits[square + Area * 3] = westSquareCount;
+                moveLimits[square + Area * 2] = westSquareCount;
+                moveLimits[square + Area * 3] = eastSquareCount;
                 moveLimits[square + Area * 4] = math.min(northSquareCount, westSquareCount);
                 moveLimits[square + Area * 5] = math.min(southSquareCount, eastSquareCount);
                 moveLimits[square + Area * 6] = math.min(northSquareCount, eastSquareCount);
@@ -59,8 +59,8 @@ namespace Chess
             squareOffsets = new NativeArray<int>(8, allocator, NativeArrayOptions.UninitializedMemory);
             squareOffsets[0] = 8;
             squareOffsets[1] = -8;
-            squareOffsets[2] = 1;
-            squareOffsets[3] = -1;
+            squareOffsets[2] = -1;
+            squareOffsets[3] = 1;
             squareOffsets[4] = 7;
             squareOffsets[5] = -7;
             squareOffsets[6] = 9;
@@ -69,12 +69,12 @@ namespace Chess
 
         public int GetBorderDistance(Square square, Direction direction)
         {
-            return moveLimits[(int)square + ((int)direction - 1) * Area];
+            return moveLimits[(int)square + Area * (int)direction];
         }
 
         public Square GetTranslatedSquare(Square square, Direction direction, int distance = 1)
         {
-            return (Square)(square + squareOffsets[(int)direction - 1] * distance);
+            return (Square)(square + squareOffsets[(int)direction] * distance);
         }
 
         public void Dispose()

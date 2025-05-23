@@ -1,5 +1,6 @@
 ﻿using Unity.Collections;
 using Unity.Jobs;
+using UnityEngine;
 
 namespace Chess
 {
@@ -59,7 +60,7 @@ namespace Chess
                         GenerateSlidingMoves(square, Direction.NorthWest, Direction.SouthWest);
                         break;
                     case Figure.Rook:
-                        GenerateSlidingMoves(square, Direction.North, Direction.West);
+                        GenerateSlidingMoves(square, Direction.North, Direction.East);
                         break;
                     case Figure.Queen:
                         GenerateSlidingMoves(square, Direction.North, Direction.SouthWest);
@@ -93,7 +94,7 @@ namespace Chess
                         FindSlidingValidationSquares(square, Direction.NorthWest, Direction.SouthWest);
                         break;
                     case Figure.Rook:
-                        FindSlidingValidationSquares(square, Direction.North, Direction.West);
+                        FindSlidingValidationSquares(square, Direction.North, Direction.East);
                         break;
                     case Figure.Queen:
                         FindSlidingValidationSquares(square, Direction.North, Direction.SouthWest);
