@@ -184,10 +184,12 @@ namespace Chess
             switch ((char)fen[cursor])
             {
                 case 'w':
-                    state.MoveColor = Color.White;
+                    state.AlliedColor = Color.White;
+                    state.EnemyColor = Color.Black;
                     break;
                 case 'b':
-                    state.MoveColor = Color.Black;
+                    state.AlliedColor = Color.Black;
+                    state.EnemyColor = Color.White;
                     break;
                 default:
                     return false;

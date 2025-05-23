@@ -1,6 +1,5 @@
 ﻿using Unity.Collections;
 using Unity.Jobs;
-using UnityEngine;
 
 namespace Chess
 {
@@ -43,7 +42,7 @@ namespace Chess
             {
                 var piece = Board[square];
 
-                if (piece.IsEmpty || piece.Color != State.MoveColor)
+                if (piece.IsEmpty || piece.Color != State.AlliedColor)
                 {
                     continue;
                 }
@@ -77,7 +76,7 @@ namespace Chess
             {
                 var piece = Board[square];
 
-                if (piece.IsEmpty || piece.Color == State.MoveColor)
+                if (piece.IsEmpty || piece.Color == State.AlliedColor)
                 {
                     continue;
                 }
@@ -134,7 +133,7 @@ namespace Chess
 
                     if (!targetPiece.IsEmpty)
                     {
-                        if (targetPiece.Color == State.MoveColor)
+                        if (targetPiece.Color == State.AlliedColor)
                         {
                             if (!isPinBlocked)
                             {
@@ -392,7 +391,7 @@ namespace Chess
                 var targetSquare = State.AlliedKingSquare.Translated(Board, direction);
                 var targetPiece = Board[targetSquare];
 
-                if (!targetPiece.IsEmpty && targetPiece.Color == State.MoveColor)
+                if (!targetPiece.IsEmpty && targetPiece.Color == State.AlliedColor)
                 {
                     continue;
                 }
@@ -410,8 +409,8 @@ namespace Chess
 
                     if (!isInCheck && !isCapturing)
                     {
-                        if (State.MoveColor == Color.White && State.WhiteCastlingKingside && targetSquare == new Square(5, 0) ||
-                            State.MoveColor == Color.Black && State.BlackCastlingKingside && targetSquare == new Square(5, 7))
+                        if (State.AlliedColor == Color.White && State.WhiteCastlingKingside && targetSquare == new Square(5, 0) ||
+                            State.AlliedColor == Color.Black && State.BlackCastlingKingside && targetSquare == new Square(5, 7))
                         {
                             var castlingSquare = targetSquare + 1;
                             if (Board[castlingSquare].IsEmpty && !attackSquares.Contains(castlingSquare))
@@ -419,8 +418,8 @@ namespace Chess
                                 Moves.Add(new Move(State.AlliedKingSquare, castlingSquare, MoveFlags.CastlingKingside));
                             }
                         }
-                        else if (State.MoveColor == Color.White && State.WhiteCastlingQueenside && targetSquare == new Square(3, 0) ||
-                                State.MoveColor == Color.Black && State.BlackCastlingQueenside && targetSquare == new Square(3, 7))
+                        else if (State.AlliedColor == Color.White && State.WhiteCastlingQueenside && targetSquare == new Square(3, 0) ||
+                                State.AlliedColor == Color.Black && State.BlackCastlingQueenside && targetSquare == new Square(3, 7))
                         {
                             var castlingSquare = targetSquare - 1;
                             if (Board[castlingSquare].IsEmpty && !attackSquares.Contains(castlingSquare))
@@ -435,9 +434,9 @@ namespace Chess
 
         private void GeneratePawnMoves(in Square square)
         {
-            var forwardDirection = State.MoveColor == Color.White ? Direction.North : Direction.South;
-            var isPromotionRequired = State.MoveColor == Color.White ? square.Rank == Board.Size - 2 : square.Rank == 1;
-            var isFirstMove = State.MoveColor == Color.White ? square.Rank == 1 : square.Rank == 6;
+            var forwardDirection = State.AlliedColor == Color.White ? Direction.North : Direction.South;
+            var isPromotionRequired = State.AlliedColor == Color.White ? square.Rank == Board.Size - 2 : square.Rank == 1;
+            var isFirstMove = State.AlliedColor == Color.White ? square.Rank == 1 : square.Rank == 6;
 
             if (square.GetBorderDistance(Board, forwardDirection) == 0)
             {
@@ -479,7 +478,7 @@ namespace Chess
             var leftAttackDirection = default(Direction);
             var rightAttackDirection = default(Direction);
 
-            switch (State.MoveColor)
+            switch (State.AlliedColor)
             {
                 case Color.Black:
                     leftAttackDirection = Direction.SouthWest;
@@ -506,7 +505,7 @@ namespace Chess
         {
             var targetPiece = Board[to];
 
-            if (!targetPiece.IsEmpty && targetPiece.Color == State.MoveColor)
+            if (!targetPiece.IsEmpty && targetPiece.Color == State.AlliedColor)
             {
                 return;
             }
@@ -545,7 +544,7 @@ namespace Chess
             var enPassantSquare = -1;
             if (State.DoubleMovePawnSquare != -1)
             {
-                enPassantSquare = 8 * (State.MoveColor == Color.White ? 5 : 2) + State.DoubleMovePawnSquare.File;
+                enPassantSquare = 8 * (State.AlliedColor == Color.White ? 5 : 2) + State.DoubleMovePawnSquare.File;
             }
 
             if (to == enPassantSquare)
@@ -566,7 +565,7 @@ namespace Chess
         {
             var targetPiece = Board[to];
 
-            if (!targetPiece.IsEmpty && targetPiece.Color == State.MoveColor)
+            if (!targetPiece.IsEmpty && targetPiece.Color == State.AlliedColor)
             {
                 return;
             }
@@ -699,7 +698,7 @@ namespace Chess
                         break;
                     }
 
-                    if (!targetPiece.IsEmpty && targetPiece.Color == State.MoveColor)
+                    if (!targetPiece.IsEmpty && targetPiece.Color == State.AlliedColor)
                     {
                         break;
                     }
