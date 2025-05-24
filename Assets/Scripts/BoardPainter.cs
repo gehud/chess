@@ -33,9 +33,9 @@ namespace Chess
             ResetSquares();
         }
 
-        public void ShowMoves(GameObject pieceSlot, in NativeList<Move> moves)
+        public void ShowMoves(GameObject pieceSlot, in Board board)
         {
-            foreach (var move in moves)
+            foreach (var move in board.Moves)
             {
                 if (move.From == pieceSlot.transform.GetSiblingIndex())
                 {

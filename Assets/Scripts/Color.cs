@@ -1,6 +1,6 @@
 ﻿namespace Chess
 {
-    public enum Color
+    public enum Color : byte
     {
         Black,
         White,

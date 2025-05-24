@@ -1,34 +1,45 @@
-﻿using Unity.Collections;
+﻿using System;
+using Unity.Collections;
 using Unity.Jobs;
 
 namespace Chess
 {
     public struct MovesJob : IJob
     {
-        [ReadOnly]
-        public State State;
-        [ReadOnly]
         public Board Board;
-        [WriteOnly]
-        public NativeList<Move> Moves;
+
+        [ReadOnly]
+        public bool QuietMoves;
 
         private Bitboard slidingAttackSquares;
         private Bitboard knightAttackSquares;
         private Bitboard pawnAttackSquares;
         private Bitboard kingAttackSquares;
         private Bitboard attackSquares;
-        private Bitboard checkSquares;
-        private Bitboard pinSquaresHorizontal;
-        private Bitboard pinSquaresVertical;
-        private Bitboard pinSquaresRightDiagonal;
-        private Bitboard pinSquaresLeftDiagonal;
-        private bool isEnPassantPinned;
+        private Bitboard attackSquaresNoPawns;
+        private Bitboard checkRayMask;
         private Bitboard pinSquares;
+        private Bitboard nonPinSquares;
         private bool isInCheck;
         private bool isInDoubleCheck;
 
+        private int alliedIndex;
+        private int enemyIndex;
+        private Square alliedKingSquare;
+        private Square enemyKingSquare;
+        private Bitboard allPiecesBoard;
+        private Bitboard alliedPieces;
+        private Bitboard enemyPieces;
+        private Bitboard moveTypeMask;
+        private Bitboard allPieces;
+        private Bitboard emptySquares;
+        private Bitboard emptyOrEnemyPieces;
+        private bool isWhiteAllied;
+
         void IJob.Execute()
         {
+            Initialize();
+
             FindValidationSquares();
 
             GenerateKingMoves();
@@ -38,76 +49,92 @@ namespace Chess
                 return;
             }
 
-            for (var square = Square.Zero; square < Board.Area; square++)
-            {
-                var piece = Board[square];
+            GenerateSlidingMoves();
+            GenerateKnightMoves();
+            GeneratePawnMoves();
+        }
 
-                if (piece.IsEmpty || piece.Color != State.AlliedColor)
-                {
-                    continue;
-                }
+        private void Initialize()
+        {
+            isWhiteAllied = Board.AlliedColor == Color.White;
 
-                switch (piece.Figure)
-                {
-                    case Figure.Pawn:
-                        GeneratePawnMoves(square);
-                        break;
-                    case Figure.Knight:
-                        GenerateKnightMoves(square);
-                        break;
-                    case Figure.Bishop:
-                        GenerateSlidingMoves(square, Direction.NorthWest, Direction.SouthWest);
-                        break;
-                    case Figure.Rook:
-                        GenerateSlidingMoves(square, Direction.North, Direction.East);
-                        break;
-                    case Figure.Queen:
-                        GenerateSlidingMoves(square, Direction.North, Direction.SouthWest);
-                        break;
-                }
-            }
+            alliedIndex = (int)Board.AlliedColor;
+            enemyIndex = (int)Board.EnemyColor;
+
+            alliedKingSquare = Board.Kings[alliedIndex];
+            enemyKingSquare = Board.Kings[enemyIndex];
+
+            allPiecesBoard = Board.AllPiecesBitboard;
+            alliedPieces = Board.ColorBitboards[alliedIndex];
+            enemyPieces = Board.ColorBitboards[enemyIndex];
+
+            allPieces = Board.AllPiecesBitboard;
+            emptySquares = ~allPieces;
+            emptyOrEnemyPieces = enemyPieces | enemyPieces;
+
+            moveTypeMask = QuietMoves ? Bitboard.All : enemyPieces;
         }
 
         private void FindValidationSquares()
         {
+            FindSlidingValidationSquares();
+
             FindPinAndCheckSquares();
 
-            for (var square = Square.Zero; square < Board.Area; square++)
+            nonPinSquares = ~pinSquares;
+
+            var alliedKingBoard = Board.PieceBitboards[new Piece(Figure.King, Board.AlliedColor).Index];
+
+            var enemyKnightsBoard = Board.PieceBitboards[new Piece(Figure.Knight, Board.EnemyColor).Index];
+
+            while (!enemyKnightsBoard.IsEmpty)
             {
-                var piece = Board[square];
+                var knightSquare = enemyKnightsBoard.Pop();
+                var knightMoves = Board.KnightMoves[knightSquare];
+                knightAttackSquares |= knightMoves;
 
-                if (piece.IsEmpty || piece.Color == State.AlliedColor)
+                if (!(knightMoves & alliedKingBoard).IsEmpty)
                 {
-                    continue;
-                }
-
-                switch (piece.Figure)
-                {
-                    case Figure.Pawn:
-                        FindPawnValidationSquares(square);
-                        break;
-                    case Figure.Knight:
-                        FindKnightValidationSquares(square);
-                        break;
-                    case Figure.Bishop:
-                        FindSlidingValidationSquares(square, Direction.NorthWest, Direction.SouthWest);
-                        break;
-                    case Figure.Rook:
-                        FindSlidingValidationSquares(square, Direction.North, Direction.East);
-                        break;
-                    case Figure.Queen:
-                        FindSlidingValidationSquares(square, Direction.North, Direction.SouthWest);
-                        break;
-                    case Figure.King:
-                        FindKingValidationSquares(square);
-                        break;
+                    MakeCheck();
+                    checkRayMask.Include(knightSquare);
                 }
             }
 
-            attackSquares.Union(slidingAttackSquares);
-            attackSquares.Union(knightAttackSquares);
-            attackSquares.Union(pawnAttackSquares);
-            attackSquares.Union(kingAttackSquares);
+            var enemyPawnBoard = Board.PieceBitboards[new Piece(Figure.Pawn, Board.EnemyColor).Index];
+            pawnAttackSquares = Board.GetPawnAttacks(enemyPawnBoard, Board.EnemyColor);
+            if (pawnAttackSquares.Contains(alliedKingSquare))
+            {
+                MakeCheck();
+                var possiblePawnAttackOrigins = isWhiteAllied ? Board.WhitePawnAttacks[alliedKingSquare] : Board.BlackPawnAttacks[alliedKingSquare];
+                var pawnChecks = enemyPawnBoard & possiblePawnAttackOrigins;
+                checkRayMask |= pawnChecks;
+            }
+
+            attackSquaresNoPawns = slidingAttackSquares | knightAttackSquares | Board.KingMoves[enemyKingSquare];
+            attackSquares = attackSquaresNoPawns | pawnAttackSquares;
+
+            if (!isInCheck)
+            {
+                checkRayMask = Bitboard.All;
+            }
+        }
+
+        private void FindSlidingValidationSquares()
+        {
+            UpdateSlidingAttack(Board.EnemyOrthogonalSliders, true);
+            UpdateSlidingAttack(Board.EnemyDiagonalSliders, false);
+        }
+
+        private void UpdateSlidingAttack(Bitboard board, bool isOrthogonal)
+        {
+            var blockers = (ulong)Board.AllPiecesBitboard & ~(1ul << alliedKingSquare);
+
+            while (!board.IsEmpty)
+            {
+                var square = board.Pop();
+                var moveBoard = Board.GetSliderAttacks(square, blockers, isOrthogonal);
+                slidingAttackSquares |= moveBoard;
+            }
         }
 
         private void MakeCheck()
@@ -118,22 +145,38 @@ namespace Chess
 
         private void FindPinAndCheckSquares()
         {
-            for (var direction = Direction.North; direction <= Direction.SouthWest; direction++)
+            var startDirection = Direction.North;
+            var endDirection = Direction.SouthWest;
+
+            if (Board.Queens[enemyIndex].Count == 0)
             {
-                var distance = State.AlliedKingSquare.GetBorderDistance(Board, direction);
+                startDirection = (Board.Rooks[enemyIndex].Count > 0) ? Direction.North : Direction.East;
+                endDirection = (Board.Bishops[enemyIndex].Count > 0) ? Direction.NorthWest : Direction.SouthWest;
+            }
+
+            for (var direction = startDirection; direction <= endDirection; direction++)
+            {
+                var sliders = direction.IsDiagonal ? Board.EnemyDiagonalSliders : Board.EnemyOrthogonalSliders;
+
+                if ((Board.GetRay(alliedKingSquare, direction) & sliders).IsEmpty)
+                {
+                    continue;
+                }
+
+                var distance = alliedKingSquare.GetBorderDistance(Board, direction);
+
                 var isPinBlocked = false;
-                var line = default(Bitboard);
-                var doubleMovePawnFound = false;
+                var ray = default(Bitboard);
 
                 for (var i = 1; i <= distance; i++)
                 {
-                    var targetSquare = State.AlliedKingSquare.Translated(Board, direction, i);
-                    line.Include(targetSquare);
+                    var targetSquare = alliedKingSquare.Translated(Board, direction, i);
+                    ray.Include(targetSquare);
                     var targetPiece = Board[targetSquare];
 
                     if (!targetPiece.IsEmpty)
                     {
-                        if (targetPiece.Color == State.AlliedColor)
+                        if (targetPiece.Color == Board.AlliedColor)
                         {
                             if (!isPinBlocked)
                             {
@@ -146,49 +189,19 @@ namespace Chess
                         }
                         else
                         {
-                            if (targetSquare == State.DoubleMovePawnSquare)
-                            {
-                                doubleMovePawnFound = true;
-                                continue;
-                            }
-
                             var targetFigure = targetPiece.Figure;
 
                             var isPinning = IsPinningDirection(direction, targetFigure);
 
                             if (isPinning)
                             {
-                                if (doubleMovePawnFound)
-                                {
-                                    isEnPassantPinned = true;
-                                    break;
-                                }
-
                                 if (isPinBlocked)
                                 {
-                                    switch (direction)
-                                    {
-                                        case Direction.North:
-                                        case Direction.South:
-                                            pinSquaresVertical.Union(line);
-                                            break;
-                                        case Direction.West:
-                                        case Direction.East:
-                                            pinSquaresHorizontal.Union(line);
-                                            break;
-                                        case Direction.NorthEast:
-                                        case Direction.SouthWest:
-                                            pinSquaresRightDiagonal.Union(line);
-                                            break;
-                                        case Direction.NorthWest:
-                                        case Direction.SouthEast:
-                                            pinSquaresLeftDiagonal.Union(line);
-                                            break;
-                                    }
+                                    pinSquares.Union(ray);
                                 }
                                 else
                                 {
-                                    checkSquares.Union(line);
+                                    checkRayMask.Union(ray);
                                     MakeCheck();
                                 }
                             }
@@ -203,11 +216,6 @@ namespace Chess
                     break;
                 }
             }
-
-            pinSquares.Union(pinSquaresHorizontal);
-            pinSquares.Union(pinSquaresVertical);
-            pinSquares.Union(pinSquaresRightDiagonal);
-            pinSquares.Union(pinSquaresLeftDiagonal);
         }
 
         private readonly bool IsPinningDirection(Direction direction, Figure figure)
@@ -218,505 +226,271 @@ namespace Chess
                 || figure == Figure.Queen;
         }
 
-        private void FindSlidingValidationSquares(Square square, Direction startDirection, Direction endDirection)
-        {
-            for (var direction = startDirection; direction <= endDirection; direction++)
-            {
-                var distance = square.GetBorderDistance(Board, direction);
-
-                for (var i = 1; i <= distance; i++)
-                {
-                    var targetSquare = square.Translated(Board, direction, i);
-                    slidingAttackSquares.Include(targetSquare);
-                    if (targetSquare != State.AlliedKingSquare)
-                    {
-                        if (!Board[targetSquare].IsEmpty)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        private void FindKnightValidationSquares(Square square)
-        {
-            var isKnightCheck = false;
-
-            int file = square.File;
-            int rank = square.Rank;
-
-            if (file > 1 && rank > 0)
-            {
-                var targetSquare = square
-                    .Translated(Board, Direction.West, 2)
-                    .Translated(Board, Direction.South);
-
-                knightAttackSquares.Include(targetSquare);
-            }
-
-            if (file > 0 && rank > 1)
-            {
-                var targetSquare = square
-                    .Translated(Board, Direction.South, 2)
-                    .Translated(Board, Direction.West);
-
-                knightAttackSquares.Include(targetSquare);
-            }
-
-            if (file > 0 && rank < 6)
-            {
-                var targetSquare = square
-                    .Translated(Board, Direction.North, 2)
-                    .Translated(Board, Direction.West);
-
-                knightAttackSquares.Include(targetSquare);
-            }
-
-            if (file > 1 && rank < 7)
-            {
-                var targetSquare = square
-                    .Translated(Board, Direction.West, 2)
-                    .Translated(Board, Direction.North);
-
-                knightAttackSquares.Include(targetSquare);
-            }
-
-            if (file < 7 && rank < 6)
-            {
-                var targetSquare = square
-                    .Translated(Board, Direction.North, 2)
-                    .Translated(Board, Direction.East);
-
-                knightAttackSquares.Include(targetSquare);
-            }
-
-            if (file < 6 && rank < 7)
-            {
-                var targetSquare = square
-                    .Translated(Board, Direction.East, 2)
-                    .Translated(Board, Direction.North);
-
-                knightAttackSquares.Include(targetSquare);
-            }
-
-            if (file < 6 && rank > 0)
-            {
-                var targetSquare = square
-                    .Translated(Board, Direction.East, 2)
-                    .Translated(Board, Direction.South);
-
-                knightAttackSquares.Include(targetSquare);
-            }
-
-            if (file < 7 && rank > 1)
-            {
-                var targetSquare = square
-                    .Translated(Board, Direction.South, 2)
-                    .Translated(Board, Direction.East);
-
-                knightAttackSquares.Include(targetSquare);
-            }
-
-            if (!isKnightCheck && knightAttackSquares.Contains(State.AlliedKingSquare))
-            {
-                isKnightCheck = true;
-                MakeCheck();
-                checkSquares.Include(square);
-            }
-        }
-
-        private void FindPawnValidationSquares(Square square)
-        {
-            var isPawnCheck = false;
-
-            var leftAttackDirection = default(Direction);
-            var rightAttackDirection = default(Direction);
-
-            switch (Board[square].Color)
-            {
-                case Color.Black:
-                    leftAttackDirection = Direction.SouthWest;
-                    rightAttackDirection = Direction.SouthEast;
-                    break;
-                case Color.White:
-                    leftAttackDirection = Direction.NorthWest;
-                    rightAttackDirection = Direction.NorthEast;
-                    break;
-            }
-
-            if (square.GetBorderDistance(Board, leftAttackDirection) >= 1)
-            {
-                pawnAttackSquares.Include(square.Translated(Board, leftAttackDirection));
-            }
-
-            if (square.GetBorderDistance(Board, rightAttackDirection) >= 1)
-            {
-                pawnAttackSquares.Include(square.Translated(Board, rightAttackDirection));
-            }
-
-            if (!isPawnCheck && pawnAttackSquares.Contains(State.AlliedKingSquare))
-            {
-                isPawnCheck = true;
-                MakeCheck();
-                checkSquares.Include(square);
-            }
-        }
-
-        private void FindKingValidationSquares(Square square)
-        {
-            for (var direction = Direction.North; direction <= Direction.SouthWest; direction++)
-            {
-                var distance = square.GetBorderDistance(Board, direction);
-
-                if (distance == 0)
-                {
-                    continue;
-                }
-
-                var targetSquare = square.Translated(Board, direction);
-                kingAttackSquares.Include(targetSquare);
-            }
-        }
-
         private void GenerateKingMoves()
         {
-            for (var direction = Direction.North; direction <= Direction.SouthWest; direction++)
+            var legalMask = ~(attackSquares | alliedPieces);
+            var kingMoves = Board.KingMoves[alliedKingSquare] & legalMask & moveTypeMask;
+
+            while (kingMoves != 0)
             {
-                if (State.AlliedKingSquare.GetBorderDistance(Board, direction) == 0)
+                var square = kingMoves.Pop();
+                Board.Moves.Add(new Move(alliedKingSquare, square));
+            }
+
+            if (!isInCheck && QuietMoves)
+            {
+                var castleBlockers = attackSquares | Board.AllPiecesBitboard;
+
+                if (Board.State.HasKingsideCastleRight(isWhiteAllied))
                 {
-                    continue;
-                }
-
-                var targetSquare = State.AlliedKingSquare.Translated(Board, direction);
-                var targetPiece = Board[targetSquare];
-
-                if (!targetPiece.IsEmpty && targetPiece.Color == State.AlliedColor)
-                {
-                    continue;
-                }
-
-                var isCapturing = !targetPiece.IsEmpty;
-
-                if (!isCapturing && checkSquares.Contains(targetSquare))
-                {
-                    continue;
-                }
-
-                if (!attackSquares.Contains(targetSquare))
-                {
-                    Moves.Add(new Move(State.AlliedKingSquare, targetSquare));
-
-                    if (!isInCheck && !isCapturing)
+                    var castleMask = isWhiteAllied ? Bitboard.WhiteKingsideMask : Bitboard.BlackKingsideMask;
+                    if ((castleBlockers & castleMask).IsEmpty)
                     {
-                        if (State.AlliedColor == Color.White && State.WhiteCastlingKingside && targetSquare == new Square(5, 0) ||
-                            State.AlliedColor == Color.Black && State.BlackCastlingKingside && targetSquare == new Square(5, 7))
+                        var targetSquare = isWhiteAllied ? Square.G1 : Square.G8;
+                        Board.Moves.Add(new Move(alliedKingSquare, targetSquare, MoveFlags.Castling));
+                    }
+                }
+
+                if (Board.State.HasQueensideCastleRight(isWhiteAllied))
+                {
+                    ulong castleMask = isWhiteAllied ? Bitboard.WhiteQueensideMask2 : Bitboard.BlackQueensideMask2;
+                    ulong castleBlockMask = isWhiteAllied ? Bitboard.WhiteQueensideMask : Bitboard.BlackQueensideMask;
+
+                    if ((castleMask & castleBlockers).IsEmpty && (castleBlockMask & Board.AllPiecesBitboard).IsEmpty)
+                    {
+                        var targetSquare = isWhiteAllied ? Square.C1 : Square.C8;
+                        Board.Moves.Add(new Move(alliedKingSquare, targetSquare, MoveFlags.Castling));
+                    }
+                }
+            }
+        }
+
+        private readonly bool IsPinned(Square square)
+        {
+            return pinSquares.Contains(square);
+        }
+
+        private void GenerateSlidingMoves()
+        {
+            var moveMask = emptyOrEnemyPieces & checkRayMask & moveTypeMask;
+
+            var orthogonalSliders = Board.AlliedOrthogonalSliders;
+            var diagonalSliders = Board.AlliedDiagonalSliders;
+
+            if (isInCheck)
+            {
+                orthogonalSliders &= ~pinSquares;
+                diagonalSliders &= ~pinSquares;
+            }
+
+            while (!orthogonalSliders.IsEmpty)
+            {
+                var square = orthogonalSliders.Pop();
+                var moveSquares = Board.GetRookAttacks(square, allPieces) & moveMask;
+
+                if (IsPinned(square))
+                {
+                    moveSquares &= Board.GetAlignMask(square, alliedKingSquare);
+                }
+
+                while (!moveSquares.IsEmpty)
+                {
+                    var targetSquare = moveSquares.Pop();
+                    Board.Moves.Add(new Move(square, targetSquare));
+                }
+            }
+
+            while (!diagonalSliders.IsEmpty)
+            {
+                var square = diagonalSliders.Pop();
+                var moveSquares = Board.GetBishopAttacks(square, allPieces) & moveMask;
+
+                if (IsPinned(square))
+                {
+                    moveSquares &= Board.GetAlignMask(square, alliedKingSquare);
+                }
+
+                while (!moveSquares.IsEmpty)
+                {
+                    var targetSquare = moveSquares.Pop();
+                    Board.Moves.Add(new Move(square, targetSquare));
+                }
+            }
+        }
+
+        private void GenerateKnightMoves()
+        {
+            var alliedKnightPiece = new Piece(Figure.Knight, Board.AlliedColor);
+            var knights = Board.PieceBitboards[alliedKnightPiece.Index] & pinSquares;
+            var moveMask = emptyOrEnemyPieces & checkRayMask & moveTypeMask;
+
+            while (!knights.IsEmpty)
+            {
+                var square = knights.Pop();
+                var moveSquares = Board.KnightMoves[square] & moveMask;
+
+                while (!moveSquares.IsEmpty)
+                {
+                    var targetSquare = moveSquares.Pop();
+                    Board.Moves.Add(new Move(square, targetSquare));
+                }
+            }
+        }
+
+        private void GeneratePawnMoves()
+        {
+            var pushDir = isWhiteAllied ? 1 : -1;
+            var pushOffset = pushDir * 8;
+
+            var friendlyPawnPiece = new Piece(Figure.Pawn, Board.AlliedColor);
+            var pawns = Board.PieceBitboards[friendlyPawnPiece.Index];
+
+            var promotionRankMask = isWhiteAllied ? Bitboard.Rank8 : Bitboard.Rank1;
+
+            var singlePush = pawns.Shifted(pushOffset) & emptySquares;
+
+            var pushPromotion = singlePush & promotionRankMask & checkRayMask;
+
+            var captureEdgeFileMask = isWhiteAllied ? ~Bitboard.FileA : ~Bitboard.FileH;
+            var captureEdgeFileMask2 = isWhiteAllied ? ~Bitboard.FileH : ~Bitboard.FileA;
+            var captureA = (pawns & captureEdgeFileMask).Shifted(pushDir * 7) & enemyPieces;
+            var captureB = (pawns & captureEdgeFileMask2).Shifted(pushDir * 9) & enemyPieces;
+
+            var singlePushNoPromotions = singlePush & ~promotionRankMask & checkRayMask;
+
+            var capturePromotionsA = captureA & promotionRankMask & checkRayMask;
+            var capturePromotionsB = captureB & promotionRankMask & checkRayMask;
+
+            captureA &= checkRayMask & ~promotionRankMask;
+            captureB &= checkRayMask & ~promotionRankMask;
+
+            if (QuietMoves)
+            {
+                while (!singlePushNoPromotions.IsEmpty)
+                {
+                    var targetSquare = singlePushNoPromotions.Pop();
+                    var startSquare = targetSquare - pushOffset;
+                    if (!IsPinned(startSquare) || Board.GetAlignMask(startSquare, alliedKingSquare) == Board.GetAlignMask(targetSquare, alliedKingSquare))
+                    {
+                        Board.Moves.Add(new Move(startSquare, targetSquare));
+                    }
+                }
+
+                var doublePushTargetRankMask = isWhiteAllied ? Bitboard.Rank4 : Bitboard.Rank5;
+                var doublePush = singlePush.Shifted(pushOffset) & emptySquares & doublePushTargetRankMask & checkRayMask;
+
+                while (!doublePush.IsEmpty)
+                {
+                    var targetSquare = doublePush.Pop();
+                    var startSquare = targetSquare - pushOffset * 2;
+                    if (!IsPinned(startSquare) || Board.GetAlignMask(startSquare, alliedKingSquare) == Board.GetAlignMask(targetSquare, alliedKingSquare))
+                    {
+                        Board.Moves.Add(new Move(startSquare, targetSquare, MoveFlags.DoublePawnMove));
+                    }
+                }
+            }
+
+            while (!captureA.IsEmpty)
+            {
+                var targetSquare = captureA.Pop();
+                var startSquare = targetSquare - pushDir * 7;
+
+                if (!IsPinned(startSquare) || Board.GetAlignMask(startSquare, alliedKingSquare) == Board.GetAlignMask(targetSquare, alliedKingSquare))
+                {
+                    Board.Moves.Add(new Move(startSquare, targetSquare));
+                }
+            }
+
+            while (!captureB.IsEmpty)
+            {
+                var targetSquare = captureB.Pop();
+                var startSquare = targetSquare - pushDir * 9;
+
+                if (!IsPinned(startSquare) || Board.GetAlignMask(startSquare, alliedKingSquare) == Board.GetAlignMask(targetSquare, alliedKingSquare))
+                {
+                    Board.Moves.Add(new Move(startSquare, targetSquare));
+                }
+            }
+
+            while (!pushPromotion.IsEmpty)
+            {
+                var targetSquare = pushPromotion.Pop();
+                var startSquare = targetSquare - pushOffset;
+
+                if (!IsPinned(startSquare))
+                {
+                    GeneratePromotions(startSquare, targetSquare);
+                }
+            }
+
+            while (!capturePromotionsA.IsEmpty)
+            {
+                var targetSquare = capturePromotionsA.Pop();
+                var startSquare = targetSquare - pushDir * 7;
+
+                if (!IsPinned(startSquare) || Board.GetAlignMask(startSquare, alliedKingSquare) == Board.GetAlignMask(targetSquare, alliedKingSquare))
+                {
+                    GeneratePromotions(startSquare, targetSquare);
+                }
+            }
+
+            while (!capturePromotionsB.IsEmpty)
+            {
+                var targetSquare = capturePromotionsB.Pop();
+                var startSquare = targetSquare - pushDir * 9;
+
+                if (!IsPinned(startSquare) || Board.GetAlignMask(startSquare, alliedKingSquare) == Board.GetAlignMask(targetSquare, alliedKingSquare))
+                {
+                    GeneratePromotions(startSquare, targetSquare);
+                }
+            }
+
+            if (Board.State.enPassantFile > 0)
+            {
+                var epFileIndex = Board.State.enPassantFile - 1;
+                var epRankIndex = isWhiteAllied ? 5 : 2;
+                var targetSquare = epRankIndex * 8 + epFileIndex;
+                var capturedPawnSquare = targetSquare - pushOffset;
+
+                if (checkRayMask.Contains(capturedPawnSquare))
+                {
+                    var pawnsThatCanCaptureEp = pawns & Board.GetPawnAttacks((Bitboard)(1ul << targetSquare), Board.AlliedColor);
+
+                    while (!pawnsThatCanCaptureEp.IsEmpty)
+                    {
+                        var startSquare = pawnsThatCanCaptureEp.Pop();
+                        if (!IsPinned(startSquare) || Board.GetAlignMask(startSquare, alliedKingSquare) == Board.GetAlignMask(targetSquare, alliedKingSquare))
                         {
-                            var castlingSquare = targetSquare + 1;
-                            if (Board[castlingSquare].IsEmpty && !attackSquares.Contains(castlingSquare))
+                            if (!IsInCheckAfterEnPassant(startSquare, targetSquare, capturedPawnSquare))
                             {
-                                Moves.Add(new Move(State.AlliedKingSquare, castlingSquare, MoveFlags.CastlingKingside));
+                                Board.Moves.Add(new Move(startSquare, targetSquare, MoveFlags.EnPassant));
                             }
                         }
-                        else if (State.AlliedColor == Color.White && State.WhiteCastlingQueenside && targetSquare == new Square(3, 0) ||
-                                State.AlliedColor == Color.Black && State.BlackCastlingQueenside && targetSquare == new Square(3, 7))
-                        {
-                            var castlingSquare = targetSquare - 1;
-                            if (Board[castlingSquare].IsEmpty && !attackSquares.Contains(castlingSquare))
-                            {
-                                Moves.Add(new Move(State.AlliedKingSquare, castlingSquare, MoveFlags.CastlingQueenside));
-                            }
-                        }
                     }
                 }
             }
         }
 
-        private void GeneratePawnMoves(in Square square)
+        private bool IsInCheckAfterEnPassant(Square startSquare, int targetSquare, int capturedPawnSquare)
         {
-            var forwardDirection = State.AlliedColor == Color.White ? Direction.North : Direction.South;
-            var isPromotionRequired = State.AlliedColor == Color.White ? square.Rank == Board.Size - 2 : square.Rank == 1;
-            var isFirstMove = State.AlliedColor == Color.White ? square.Rank == 1 : square.Rank == 6;
+            var enemyOrtho = Board.EnemyOrthogonalSliders;
 
-            if (square.GetBorderDistance(Board, forwardDirection) == 0)
+            while (!enemyOrtho.IsEmpty)
             {
-                return;
+                var maskedBlockers = allPieces ^ (1ul << capturedPawnSquare | 1ul << startSquare | 1ul << targetSquare);
+                var rookAttacks = Board.GetRookAttacks(alliedKingSquare, maskedBlockers);
+                return (rookAttacks & enemyOrtho) != 0;
             }
 
-            var oneForwardSquare = square.Translated(Board, forwardDirection);
-
-            if (Board[oneForwardSquare].IsEmpty)
-            {
-                if (!pinSquares.Contains(square) || pinSquaresVertical.Contains(oneForwardSquare))
-                {
-                    if (!isInCheck || checkSquares.Contains(oneForwardSquare))
-                    {
-                        if (isPromotionRequired)
-                        {
-                            AddPawnPromotion(square, oneForwardSquare);
-                        }
-                        else
-                        {
-                            Moves.Add(new Move(square, oneForwardSquare));
-                        }
-                    }
-
-                    if (isFirstMove)
-                    {
-                        var twoForwardSquare = oneForwardSquare.Translated(Board, forwardDirection);
-                        if (Board[twoForwardSquare].IsEmpty)
-                        {
-                            if (!isInCheck || checkSquares.Contains(twoForwardSquare))
-                            {
-                                Moves.Add(new Move(square, twoForwardSquare, MoveFlags.DoublePawnMove));
-                            }
-                        }
-                    }
-                }
-            }
-
-            var leftAttackDirection = default(Direction);
-            var rightAttackDirection = default(Direction);
-
-            switch (State.AlliedColor)
-            {
-                case Color.Black:
-                    leftAttackDirection = Direction.SouthWest;
-                    rightAttackDirection = Direction.SouthEast;
-                    break;
-                case Color.White:
-                    leftAttackDirection = Direction.NorthWest;
-                    rightAttackDirection = Direction.NorthEast;
-                    break;
-            }
-
-            if (square.GetBorderDistance(Board, leftAttackDirection) >= 1)
-            {
-                TryAddPawnCaptureMove(square, square.Translated(Board, leftAttackDirection), leftAttackDirection, isPromotionRequired);
-            }
-
-            if (square.GetBorderDistance(Board, rightAttackDirection) >= 1)
-            {
-                TryAddPawnCaptureMove(square, square.Translated(Board, rightAttackDirection), rightAttackDirection, isPromotionRequired);
-            }
+            return false;
         }
 
-        private void TryAddPawnCaptureMove(Square from, Square to, Direction direction, bool isPromotionRequired)
+        private void GeneratePromotions(Square from, Square to)
         {
-            var targetPiece = Board[to];
-
-            if (!targetPiece.IsEmpty && targetPiece.Color == State.AlliedColor)
-            {
-                return;
-            }
-
-            var pinAxis = GetPinAxis(direction);
-
-            if (pinSquares.Contains(from) && !pinAxis.Contains(to))
-            {
-                return;
-            }
-
-            var isCapturing = !targetPiece.IsEmpty;
-
-            if (isCapturing)
-            {
-                if (isInCheck && !checkSquares.Contains(to))
-                {
-                    return;
-                }
-
-                if (isPromotionRequired)
-                {
-                    AddPawnPromotion(from, to);
-                }
-                else
-                {
-                    Moves.Add(new Move(from, to));
-                }
-            }
-
-            if (isEnPassantPinned)
-            {
-                return;
-            }
-
-            var enPassantSquare = -1;
-            if (State.DoubleMovePawnSquare != -1)
-            {
-                enPassantSquare = 8 * (State.AlliedColor == Color.White ? 5 : 2) + State.DoubleMovePawnSquare.File;
-            }
-
-            if (to == enPassantSquare)
-            {
-                Moves.Add(new Move(from, to, MoveFlags.EnPassant));
-            }
-        }
-
-        private void AddPawnPromotion(Square from, Square to)
-        {
-            Moves.Add(new Move(from, to, MoveFlags.QueenPromotion));
-            Moves.Add(new Move(from, to, MoveFlags.RookPromotion));
-            Moves.Add(new Move(from, to, MoveFlags.KnightPromotion));
-            Moves.Add(new Move(from, to, MoveFlags.BishopPromotion));
-        }
-
-        private void GenerateKnightMove(Square from, Square to)
-        {
-            var targetPiece = Board[to];
-
-            if (!targetPiece.IsEmpty && targetPiece.Color == State.AlliedColor)
-            {
-                return;
-            }
-
-            if (isInCheck && !checkSquares.Contains(to))
-            {
-                return;
-            }
-
-            Moves.Add(new Move(from, to));
-        }
-
-        private void GenerateKnightMoves(Square square)
-        {
-            if (pinSquares.Contains(square))
-            {
-                return;
-            }
-
-            int file = square.File;
-            int rank = square.Rank;
-
-            if (file > 1 && rank > 0)
-            {
-                var targetSquare = square
-                    .Translated(Board, Direction.West, 2)
-                    .Translated(Board, Direction.South);
-
-                GenerateKnightMove(square, targetSquare);
-            }
-
-            if (file > 0 && rank > 1)
-            {
-                var targetSquare = square
-                    .Translated(Board, Direction.South, 2)
-                    .Translated(Board, Direction.West);
-
-                GenerateKnightMove(square, targetSquare);
-            }
-
-            if (file > 0 && rank < 6)
-            {
-                var targetSquare = square
-                    .Translated(Board, Direction.North, 2)
-                    .Translated(Board, Direction.West);
-
-                GenerateKnightMove(square, targetSquare);
-            }
-
-            if (file > 1 && rank < 7)
-            {
-                var targetSquare = square
-                    .Translated(Board, Direction.West, 2)
-                    .Translated(Board, Direction.North);
-
-                GenerateKnightMove(square, targetSquare);
-            }
-
-            if (file < 7 && rank < 6)
-            {
-                var targetSquare = square
-                    .Translated(Board, Direction.North, 2)
-                    .Translated(Board, Direction.East);
-
-                GenerateKnightMove(square, targetSquare);
-            }
-
-            if (file < 6 && rank < 7)
-            {
-                var targetSquare = square
-                    .Translated(Board, Direction.East, 2)
-                    .Translated(Board, Direction.North);
-
-                GenerateKnightMove(square, targetSquare);
-            }
-
-            if (file < 6 && rank > 0)
-            {
-                var targetSquare = square
-                    .Translated(Board, Direction.East, 2)
-                    .Translated(Board, Direction.South);
-
-                GenerateKnightMove(square, targetSquare);
-            }
-
-            if (file < 7 && rank > 1)
-            {
-                var targetSquare = square
-                    .Translated(Board, Direction.South, 2)
-                    .Translated(Board, Direction.East);
-
-                GenerateKnightMove(square, targetSquare);
-            }
-        }
-
-        private readonly Bitboard GetPinAxis(Direction direction)
-        {
-            return direction switch
-            {
-                Direction.North or Direction.South => pinSquaresVertical,
-                Direction.West or Direction.East => pinSquaresHorizontal,
-                Direction.NorthEast or Direction.SouthWest => pinSquaresRightDiagonal,
-                Direction.NorthWest or Direction.SouthEast => pinSquaresLeftDiagonal,
-                _ => default
-            };
-        }
-
-        private void GenerateSlidingMoves(Square square, Direction startDirection, Direction endDirection)
-        {
-            var isPinned = pinSquares.Contains(square);
-
-            if (isInCheck && isPinned)
-            {
-                return;
-            }
-
-            for (var direction = startDirection; direction <= endDirection; direction++)
-            {
-                var distance = square.GetBorderDistance(Board, direction);
-
-                var pinAxis = GetPinAxis(direction);
-
-                for (var i = 1; i <= distance; i++)
-                {
-                    var targetSquare = square.Translated(Board, direction, i);
-                    var targetPiece = Board[targetSquare];
-
-                    if (isPinned && !pinAxis.Contains(targetSquare))
-                    {
-                        break;
-                    }
-
-                    if (!targetPiece.IsEmpty && targetPiece.Color == State.AlliedColor)
-                    {
-                        break;
-                    }
-
-                    var isCapturing = !targetPiece.IsEmpty;
-
-                    var isBlockingCheck = checkSquares.Contains(targetSquare);
-                    if (isBlockingCheck || !isInCheck)
-                    {
-                        Moves.Add(new Move(square, targetSquare));
-                    }
-
-                    if (isCapturing || isBlockingCheck)
-                    {
-                        break;
-                    }
-                }
-            }
+            Board.Moves.Add(new Move(from, to, MoveFlags.QueenPromotion));
+            Board.Moves.Add(new Move(from, to, MoveFlags.RookPromotion));
+            Board.Moves.Add(new Move(from, to, MoveFlags.BishopPromotion));
+            Board.Moves.Add(new Move(from, to, MoveFlags.KnightPromotion));
         }
     }
 }

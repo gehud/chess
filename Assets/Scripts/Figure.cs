@@ -1,6 +1,6 @@
 namespace Chess
 {
-    public enum Figure
+    public enum Figure : byte
     {
         None,
         Pawn,

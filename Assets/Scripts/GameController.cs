@@ -6,23 +6,23 @@ namespace Chess
     public class GameController : MonoBehaviour
     {
         [SerializeField]
-        private BoardPainter board;
+        private BoardPainter painter;
         [SerializeField]
         private string fen;
 
-        private Game game;
+        private Board board;
         private Controls controls;
 
         private void OnPiecePicked(GameObject pieceSlot)
         {
-            board.ShowMoves(pieceSlot, game.Moves);
+            painter.ShowMoves(pieceSlot, board);
         }
 
         private void OnPieceDroppped(Square from, Square to)
         {
             var actualMove = default(Move);
 
-            foreach (var move in game.Moves)
+            foreach (var move in board.Moves)
             {
                 if (move.From == from && move.To == to)
                 {
@@ -31,36 +31,28 @@ namespace Chess
                 }
             }
 
-            game.MakeMove(actualMove);
-            game.GenerateMoves();
-            board.Repaint(game.Board);
-        }
-
-        private void UnmakeMove()
-        {
-            game.UnmakeMove();
-            game.GenerateMoves();
-            board.Repaint(game.Board);
+            board.MakeMove(actualMove);
+            board.GenerateMoves();
+            painter.Repaint(board);
         }
 
         private void Awake()
         {
-            game = new Game(Allocator.Persistent);
+            board = new Board(Allocator.Persistent);
 
             if (string.IsNullOrEmpty(fen))
             {
-                game.Start();
+                board.Load(Fen.Start);
             }
             else
             {
-                game.Load(fen);
+                board.Load(fen);
             }
 
-            game.GenerateMoves();
-            board.Repaint(game.Board);
+            board.GenerateMoves();
+            painter.Repaint(board);
 
             controls = new();
-            controls.Player.Undo.performed += (ctx) => UnmakeMove();
         }
 
         private void OnEnable()
@@ -79,7 +71,7 @@ namespace Chess
 
         private void OnDestroy()
         {
-            game.Dispose();
+            board.Dispose();
         }
     }
 }

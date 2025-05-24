@@ -5,14 +5,14 @@ namespace Chess.Tests
 {
     public struct Perft
     {
-        private Game game;
+        private Board board;
         private readonly int depth;
         private readonly int nodes;
 
         public Perft(string fen, int depth, int nodes, Allocator allocator = Allocator.Persistent)
         {
-            game = new Game(allocator);
-            game.Load(fen);
+            board = new Board(allocator);
+            board.Load(fen);
             this.depth = depth;
             this.nodes = nodes;
         }
@@ -24,29 +24,29 @@ namespace Chess.Tests
 
         private int Search(int depth, bool debug = true)
         {
-            game.GenerateMoves();
+            board.GenerateMoves();
 
             if (depth == 1)
             {
 #if PERFT_DEBUG_MOVES
                 if (debug)
                 {
-                    foreach (var move in game.Moves)
+                    foreach (var move in board.Moves)
                     {
                         UnityEngine.Debug.Log($"{move}: 1");
                     }
                 }
 #endif
-                return game.Moves.Length;
+                return board.Moves.Length;
             }
 
             var moves = new NativeList<Move>(Allocator.Persistent);
-            moves.CopyFrom(game.Moves);
+            moves.CopyFrom(board.Moves);
             var count = 0;
 
             for (var i = 0; i < moves.Length; i++)
             {
-                game.MakeMove(moves[i]);
+                board.MakeMove(moves[i]);
                 var innerCount = Search(depth - 1, false);
                 count += innerCount;
 #if PERFT_DEBUG_MOVES
@@ -55,7 +55,7 @@ namespace Chess.Tests
                     UnityEngine.Debug.Log($"{moves[i]}: {innerCount}");
                 }
 #endif
-                game.UnmakeMove();
+                board.UnmakeMove(moves[i]);
             }
 
             moves.Dispose();

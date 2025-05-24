@@ -16,7 +16,7 @@ namespace Chess
             cursor = 0;
         }
 
-        public bool Load(ref Board board, ref State state)
+        public bool Load(ref Board board)
         {
             cursor = 0;
 
@@ -30,7 +30,7 @@ namespace Chess
                 return false;
             }
 
-            if (!TryParseMoveColor(ref state))
+            if (!TryParseMoveColor(ref board))
             {
                 return false;
             }
@@ -40,7 +40,39 @@ namespace Chess
                 return false;
             }
 
-            if (!TryParseCastlings(ref state))
+            var whiteCastlingKingside = false;
+            var blackCastlingKingside = false;
+            var whiteCastlingQueenside = false;
+            var blackCastlingQueenside = false;
+            if (!TryParseCastlings(ref whiteCastlingKingside, ref blackCastlingKingside, ref whiteCastlingQueenside, ref blackCastlingQueenside))
+            {
+                return false;
+            }
+
+            int whiteCastle = ((whiteCastlingKingside) ? 1 << 0 : 0) | ((whiteCastlingQueenside) ? 1 << 1 : 0);
+            int blackCastle = ((blackCastlingKingside) ? 1 << 2 : 0) | ((blackCastlingQueenside) ? 1 << 3 : 0);
+            int castlingRights = whiteCastle | blackCastle;
+            board.State.castlingRights = castlingRights;
+
+            if (!TryParseSeparator())
+            {
+                return false;
+            }
+
+            if (!TryParseDoubleMovePawnSquare(ref board))
+            {
+                return false;
+            }
+
+            var zobrist = new Zobrist(board);
+            board.State.zobristKey = zobrist.Key;
+
+            if (!TryParseSeparator())
+            {
+                return false;
+            }
+
+            if (!TryParseImmutableMoveCount(ref board))
             {
                 return false;
             }
@@ -50,27 +82,7 @@ namespace Chess
                 return false;
             }
 
-            if (!TryParseDoubleMovePawnSquare(ref state))
-            {
-                return false;
-            }
-
-            if (!TryParseSeparator())
-            {
-                return false;
-            }
-
-            if (!TryParseImmutableMoveCount(ref state))
-            {
-                return false;
-            }
-
-            if (!TryParseSeparator())
-            {
-                return false;
-            }
-
-            if (!TryParseNextMoveIndex(ref state))
+            if (!TryParseNextMoveIndex(ref board))
             {
                 return false;
             }
@@ -174,7 +186,7 @@ namespace Chess
             return false;
         }
 
-        private bool TryParseMoveColor(ref State state)
+        private bool TryParseMoveColor(ref Board board)
         {
             if (fen.Length <= cursor)
             {
@@ -184,12 +196,10 @@ namespace Chess
             switch ((char)fen[cursor])
             {
                 case 'w':
-                    state.AlliedColor = Color.White;
-                    state.EnemyColor = Color.Black;
+                    board.IsWhiteAllied = true;
                     break;
                 case 'b':
-                    state.AlliedColor = Color.Black;
-                    state.EnemyColor = Color.White;
+                    board.IsWhiteAllied = false;
                     break;
                 default:
                     return false;
@@ -200,14 +210,14 @@ namespace Chess
             return true;
         }
 
-        private bool TryParseCastlings(ref State state)
+        private bool TryParseCastlings(ref bool whiteCastlingKingside, ref bool blackCastlingKingside, ref bool whiteCastlingQueenside, ref bool blackCastlingQueenside)
         {
             if (fen[cursor] == '-')
             {
-                state.WhiteCastlingKingside = false;
-                state.BlackCastlingKingside = false;
-                state.WhiteCastlingQueenside = false;
-                state.BlackCastlingQueenside = false;
+                whiteCastlingKingside = false;
+                blackCastlingKingside = false;
+                whiteCastlingQueenside = false;
+                blackCastlingQueenside = false;
                 ++cursor;
                 return true;
             }
@@ -230,19 +240,19 @@ namespace Chess
                     }
                     else if (symbol == 'K')
                     {
-                        state.WhiteCastlingKingside = true;
+                        whiteCastlingKingside = true;
                     }
                     else if (symbol == 'k')
                     {
-                        state.BlackCastlingKingside = true;
+                        blackCastlingKingside = true;
                     }
                     else if (symbol == 'Q')
                     {
-                        state.WhiteCastlingQueenside = true;
+                        whiteCastlingQueenside = true;
                     }
                     else if (symbol == 'q')
                     {
-                        state.BlackCastlingQueenside = true;
+                        blackCastlingQueenside = true;
                     }
                 }
 
@@ -250,11 +260,11 @@ namespace Chess
             }
         }
 
-        private bool TryParseDoubleMovePawnSquare(ref State state)
+        private bool TryParseDoubleMovePawnSquare(ref Board board)
         {
             if (fen[cursor] == '-')
             {
-                state.DoubleMovePawnSquare = -1;
+                board.State.enPassantFile = -1;
                 ++cursor;
                 return true;
             }
@@ -273,15 +283,13 @@ namespace Chess
                     return false;
                 }
 
-                var rank = (int)(char.GetNumericValue((char)fen[cursor]) - 1);
-
-                state.DoubleMovePawnSquare = new Square(file, rank);
+                board.State.enPassantFile = file;
                 ++cursor;
                 return true;
             }
         }
 
-        private bool TryParseImmutableMoveCount(ref State state)
+        private bool TryParseImmutableMoveCount(ref Board board)
         {
             if (fen.Length <= cursor)
             {
@@ -293,12 +301,12 @@ namespace Chess
                 return false;
             }
 
-            state.ImmutableMoveCount = (int)char.GetNumericValue((char)fen[cursor]);
+            board.State.fiftyMoveCounter = (int)char.GetNumericValue((char)fen[cursor]);
             ++cursor;
             return true;
         }
 
-        private bool TryParseNextMoveIndex(ref State state)
+        private bool TryParseNextMoveIndex(ref Board board)
         {
             if (fen.Length <= cursor)
             {
@@ -310,7 +318,7 @@ namespace Chess
                 return false;
             }
 
-            state.NextMoveIndex = (int)char.GetNumericValue((char)fen[cursor]);
+            board.PlyCount = (int)char.GetNumericValue((char)fen[cursor]);
             ++cursor;
             return true;
         }

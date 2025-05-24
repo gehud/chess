@@ -1,8 +1,12 @@
-﻿namespace Chess
+﻿using System;
+
+namespace Chess
 {
-    public readonly struct Piece
+    public readonly struct Piece : IEquatable<Piece>
     {
         public readonly bool IsEmpty => Figure == Figure.None;
+
+        public readonly int Index => (int)Color * 6 + (int)Figure - 1;
 
         public static Piece Empty => new(0);
 
@@ -24,22 +28,27 @@
 
         public static bool operator ==(Piece left, Piece right)
         {
-            return left.value == right.value;
+            return left.Equals(right);
         }
 
         public static bool operator !=(Piece left, Piece right)
         {
-            return left.value != right.value;
+            return !left.Equals(right);
         }
 
-        public override readonly bool Equals(object @object)
+        public bool Equals(Piece other)
         {
-            if (@object is not Piece piece)
+            return value == other.value;
+        }
+
+        public override readonly bool Equals(object other)
+        {
+            if (other is not Piece piece)
             {
                 return false;
             }
 
-            return value == piece.value;
+            return Equals(piece);
         }
 
         public override readonly int GetHashCode()
