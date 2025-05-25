@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
@@ -54,10 +53,10 @@ namespace Chess
         public NativeList<ulong> RepetitionPositionHistory;
 
         public int PlyCount;
-        public int FiftyMoveCounter => State.fiftyMoveCounter;
+        public int FiftyMoveCounter => State.FiftyMoveCounter;
 
         public State State;
-        public ulong ZobristKey => State.zobristKey;
+        public ulong ZobristKey => State.ZobristKey;
 
         public NativeList<Move> Moves;
         public NativeList<Move> AllMoves;
@@ -66,7 +65,7 @@ namespace Chess
 
         public NativeArray<NativeHashSet<Square>> AllPieces;
 
-        public bool hasCachedInCheckValue;
+        public bool HasCachedInCheckValue;
 
         public NativeArray<int> MoveLimits;
         public NativeArray<int> SquareOffsets;
@@ -281,7 +280,7 @@ namespace Chess
             ZobristEnPassantFile = new(9, allocator);
             ZobristSideToMove = default;
 
-            hasCachedInCheckValue = default;
+            HasCachedInCheckValue = default;
 
             Zobrist.Initialize(ref this);
 
@@ -347,10 +346,10 @@ namespace Chess
             var capturedPiece = isEnPassant ? new Piece(Figure.Pawn, EnemyColor) : Squares[targetSquare];
             var capturedPieceType = capturedPiece.Figure;
 
-            var prevCastleState = State.castlingRights;
-            var prevEnPassantFile = State.enPassantFile;
-            var newZobristKey = State.zobristKey;
-            var newCastlingRights = State.castlingRights;
+            var prevCastleState = State.CastlingRights;
+            var prevEnPassantFile = State.EnPassantFile;
+            var newZobristKey = State.ZobristKey;
+            var newCastlingRights = State.CastlingRights;
             var newEnPassantFile = 0;
 
             MovePiece(movedPiece, startSquare, targetSquare);
@@ -477,7 +476,7 @@ namespace Chess
             IsWhiteAllied = !IsWhiteAllied;
 
             PlyCount++;
-            var newFiftyMoveCounter = State.fiftyMoveCounter + 1;
+            var newFiftyMoveCounter = State.FiftyMoveCounter + 1;
 
             AllPiecesBitboard = ColorBitboards[AlliedColorIndex] | ColorBitboards[EnemyColorIndex];
             UpdateSliderBitboards();
@@ -492,17 +491,17 @@ namespace Chess
                 newFiftyMoveCounter = 0;
             }
 
-            State.capturedPieceType = capturedPieceType;
-            State.enPassantFile = newEnPassantFile;
-            State.castlingRights = newCastlingRights;
-            State.fiftyMoveCounter = newFiftyMoveCounter;
-            State.zobristKey = newZobristKey;
+            State.CapturedFigure = capturedPieceType;
+            State.EnPassantFile = newEnPassantFile;
+            State.CastlingRights = newCastlingRights;
+            State.FiftyMoveCounter = newFiftyMoveCounter;
+            State.ZobristKey = newZobristKey;
             StateHistory.Add(State);
-            hasCachedInCheckValue = false;
+            HasCachedInCheckValue = false;
 
             if (!inSearch)
             {
-                RepetitionPositionHistory.Add(State.zobristKey);
+                RepetitionPositionHistory.Add(State.ZobristKey);
                 AllMoves.Add(move);
             }
         }
@@ -534,11 +533,11 @@ namespace Chess
 
             var undoingEnPassant = (moveFlag & MoveFlags.EnPassant) != MoveFlags.None;
             var undoingPromotion = (moveFlag & MoveFlags.Promotion) != MoveFlags.None;
-            var undoingCapture = State.capturedPieceType != Figure.None;
+            var undoingCapture = State.CapturedFigure != Figure.None;
 
             var movedPiece = undoingPromotion ? new Piece(Figure.Pawn, AlliedColor) : this[movedTo];
             var movedPieceType = movedPiece.Figure;
-            var capturedPieceType = State.capturedPieceType;
+            var capturedPieceType = State.CapturedFigure;
 
             if (undoingPromotion)
             {
@@ -615,13 +614,7 @@ namespace Chess
             StateHistory.RemoveAt(StateHistory.Length - 1);
             State = StateHistory[^1];
             PlyCount--;
-            hasCachedInCheckValue = false;
-        }
-
-        public void Load(in Fen fen)
-        {
-            fen.Load(ref this);
-            Initialize();
+            HasCachedInCheckValue = false;
         }
 
         public void Load(string fen)
@@ -740,7 +733,7 @@ namespace Chess
                     var targetCoordinate = coordinate + directions[i] * j;
                     var nextCoordinate = targetCoordinate + directions[i];
 
-                    if (!IsCoordinateValid(nextCoordinate))
+                    if (IsCoordinateValid(nextCoordinate))
                     {
                         mask.Include(new Square(targetCoordinate));
                     }
@@ -875,13 +868,14 @@ namespace Chess
             return (Square)(square + SquareOffsets[(int)direction] * distance);
         }
 
-        public void Initialize()
+        public void Load(in Fen fen)
         {
             for (var square = Square.Zero; square < Area; square++)
             {
-                var piece = this[square];
+                var piece = fen.Squares[square];
                 var figure = piece.Figure;
                 var color = piece.Color;
+                this[square] = piece;
 
                 if (figure != Figure.None)
                 {
@@ -899,9 +893,27 @@ namespace Chess
                 }
             }
 
-            AllPiecesBitboard = ColorBitboards[0] | ColorBitboards[1];
+            IsWhiteAllied = fen.IsWhiteAllied;
 
+            AllPiecesBitboard = ColorBitboards[AlliedColorIndex] | ColorBitboards[EnemyColorIndex];
             UpdateSliderBitboards();
+
+            var whiteCastle = (fen.WhiteCastleKingside ? 1 << 0 : 0) | (fen.WhiteCastleQueenside ? 1 << 1 : 0);
+            var blackCastle = (fen.BlackCastleKingside ? 1 << 2 : 0) | (fen.BlackCastleQueenside ? 1 << 3 : 0);
+            State.CastlingRights = whiteCastle | blackCastle;
+
+            PlyCount = (fen.MoveCount - 1) * 2 + (IsWhiteAllied ? 0 : 1);
+
+            State.FiftyMoveCounter = fen.FiftyMovePlyCount;
+            State.CapturedFigure = Figure.None;
+            State.EnPassantFile = fen.EnPassantFile;
+
+            var zobrist = new Zobrist(this);
+
+            State.ZobristKey = zobrist.Key;
+
+            RepetitionPositionHistory.Add(zobrist.Key);
+            StateHistory.Add(State);
         }
 
         public void Dispose()
@@ -935,19 +947,14 @@ namespace Chess
             Queens[1].Dispose();
             Queens.Dispose();
 
+            AllPieces.Dispose();
+
             Moves.Dispose();
             AllMoves.Dispose();
 
             ZobristPiecesArray.Dispose();
             ZobristCastlingRights.Dispose();
             ZobristEnPassantFile.Dispose();
-
-            for (var i = 0; i < AllPieces.Length; i++)
-            {
-                AllPieces[i].Dispose();
-            }
-
-            AllPieces.Dispose();
 
             KnightMoves.Dispose();
             KingMoves.Dispose();

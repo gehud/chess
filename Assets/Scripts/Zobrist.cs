@@ -57,14 +57,14 @@ namespace Chess
                     key ^= board.ZobristPiecesArray[piece.Index * Board.Area + square];
                 }
 
-                key ^= board.ZobristEnPassantFile[board.State.enPassantFile];
+                key ^= board.ZobristEnPassantFile[board.State.EnPassantFile];
 
                 if (board.AlliedColor == Color.Black)
                 {
                     key ^= board.ZobristSideToMove;
                 }
 
-                key ^= board.ZobristCastlingRights[board.State.castlingRights];
+                key ^= board.ZobristCastlingRights[board.State.CastlingRights];
             }
         }
     }

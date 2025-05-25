@@ -1,11 +1,12 @@
-﻿using System;
-using Unity.Collections;
+﻿using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 
 namespace Chess
 {
     public struct MovesJob : IJob
     {
+        [NativeDisableContainerSafetyRestriction]
         public Board Board;
 
         [ReadOnly]
@@ -445,9 +446,9 @@ namespace Chess
                 }
             }
 
-            if (Board.State.enPassantFile > 0)
+            if (Board.State.EnPassantFile > 0)
             {
-                var epFileIndex = Board.State.enPassantFile - 1;
+                var epFileIndex = Board.State.EnPassantFile - 1;
                 var epRankIndex = isWhiteAllied ? 5 : 2;
                 var targetSquare = epRankIndex * 8 + epFileIndex;
                 var capturedPawnSquare = targetSquare - pushOffset;
