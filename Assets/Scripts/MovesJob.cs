@@ -1,6 +1,7 @@
 ﻿using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
+using UnityEngine;
 
 namespace Chess
 {
@@ -12,30 +13,29 @@ namespace Chess
         [ReadOnly]
         public bool QuietMoves;
 
-        private Bitboard slidingAttackSquares;
-        private Bitboard knightAttackSquares;
-        private Bitboard pawnAttackSquares;
-        private Bitboard kingAttackSquares;
-        private Bitboard attackSquares;
-        private Bitboard attackSquaresNoPawns;
-        private Bitboard checkRayMask;
-        private Bitboard pinSquares;
-        private Bitboard nonPinSquares;
-        private bool isInCheck;
-        private bool isInDoubleCheck;
-
+        private bool isWhiteAllied;
         private int alliedIndex;
         private int enemyIndex;
         private Square alliedKingSquare;
-        private Square enemyKingSquare;
-        private Bitboard allPiecesBoard;
-        private Bitboard alliedPieces;
+
+        private bool isInCheck;
+        private bool isInDoubleCheck;
+
+        private Bitboard checkRayMask;
+        
+        private Bitboard pinSquares;
+        private Bitboard nonPinSquares;
+        private Bitboard attackSquaresNoPawns;
+        private Bitboard attackSquares;
+        private Bitboard pawnAttackSquares;
+
         private Bitboard enemyPieces;
-        private Bitboard moveTypeMask;
-        private Bitboard allPieces;
+        private Bitboard alliedPieces;
         private Bitboard emptySquares;
         private Bitboard emptyOrEnemyPieces;
-        private bool isWhiteAllied;
+        private Square enemyKingSquare;
+        private Bitboard moveTypeMask;
+        private Bitboard allPieces;
 
         void IJob.Execute()
         {
@@ -70,7 +70,6 @@ namespace Chess
             alliedKingSquare = Board.Kings[alliedIndex];
             enemyKingSquare = Board.Kings[enemyIndex];
 
-            allPiecesBoard = Board.AllPiecesBitboard;
             alliedPieces = Board.ColorBitboards[alliedIndex];
             enemyPieces = Board.ColorBitboards[enemyIndex];
 
@@ -83,7 +82,7 @@ namespace Chess
 
         private void FindValidationSquares()
         {
-            FindSlidingValidationSquares();
+            var slidingAttackSquares = FindSlidingValidationSquares();
 
             FindPinAndCheckSquares();
 
@@ -92,6 +91,8 @@ namespace Chess
             var alliedKingBoard = Board.PieceBitboards[new Piece(Figure.King, Board.AlliedColor).Index];
 
             var enemyKnightsBoard = Board.PieceBitboards[new Piece(Figure.Knight, Board.EnemyColor).Index];
+
+            var knightAttackSquares = Bitboard.Empty;
 
             while (!enemyKnightsBoard.IsEmpty)
             {
@@ -125,22 +126,30 @@ namespace Chess
             }
         }
 
-        private void FindSlidingValidationSquares()
+        private Bitboard FindSlidingValidationSquares()
         {
-            UpdateSlidingAttack(Board.EnemyOrthogonalSliders, true);
-            UpdateSlidingAttack(Board.EnemyDiagonalSliders, false);
+            var all = Bitboard.Empty;
+
+            all |= UpdateSlidingAttack(Board.EnemyOrthogonalSliders, true);
+            all |= UpdateSlidingAttack(Board.EnemyDiagonalSliders, false);
+
+            return all;
         }
 
-        private void UpdateSlidingAttack(Bitboard board, bool isOrthogonal)
+        private Bitboard UpdateSlidingAttack(Bitboard board, bool isOrthogonal)
         {
+            var result = Bitboard.Empty;
+
             var blockers = Board.AllPiecesBitboard.Without(alliedKingSquare);
 
             while (!board.IsEmpty)
             {
                 var square = board.Pop();
                 var moveBoard = Board.GetSliderAttacks(square, blockers, isOrthogonal);
-                slidingAttackSquares |= moveBoard;
+                result |= moveBoard;
             }
+
+            return result;
         }
 
         private void MakeCheck()
@@ -327,7 +336,7 @@ namespace Chess
         private void GenerateKnightMoves()
         {
             var alliedKnightPiece = new Piece(Figure.Knight, Board.AlliedColor);
-            var knights = Board.PieceBitboards[alliedKnightPiece.Index] & pinSquares;
+            var knights = Board.PieceBitboards[alliedKnightPiece.Index] & nonPinSquares;
             var moveMask = emptyOrEnemyPieces & checkRayMask & moveTypeMask;
 
             while (!knights.IsEmpty)

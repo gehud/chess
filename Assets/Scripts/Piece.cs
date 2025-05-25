@@ -6,7 +6,10 @@ namespace Chess
     {
         public readonly bool IsEmpty => Figure == Figure.None;
 
-        public readonly int Index => (int)Color * 6 + (int)Figure - 1;
+        public readonly int Index => (int)Color * 6 + (int)Figure;
+
+        public const int MinIndex = 0;
+        public const int MaxIndex = 12;
 
         public static Piece Empty => new(0);
 

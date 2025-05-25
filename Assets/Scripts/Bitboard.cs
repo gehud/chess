@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using Unity.Mathematics;
 
 namespace Chess
@@ -49,7 +50,7 @@ namespace Chess
 
         public readonly bool Contains(Square square) => (value & (1ul << square.Index)) != 0;
 
-        public readonly bool Get(int file, int rank) => Contains(new Square(file, rank));
+        public readonly bool Contains(int file, int rank) => Contains(new Square(file, rank));
 
         public void Include(Square square) => value |= 1ul << square.Index;
 
@@ -76,6 +77,13 @@ namespace Chess
         public void Toggle(Square square) => value ^= 1ul << square.Index;
 
         public void Toggle(int file, int rank) => Toggle(new Square(file, rank));
+
+        public readonly Bitboard Toggled(Square square)
+        {
+            var toggled = this;
+            toggled.Toggle(square);
+            return toggled;
+        }
 
         public void Union(Bitboard other) => this |= other;
 
@@ -114,6 +122,11 @@ namespace Chess
             return new(left.value | right.value);
         }
 
+        public static Bitboard operator |(Bitboard left, Square right)
+        {
+            return left.With(right);
+        }
+
         public static Bitboard operator &(Bitboard left, Bitboard right)
         {
             return new(left.value & right.value);
@@ -122,6 +135,11 @@ namespace Chess
         public static Bitboard operator ^(Bitboard left, Bitboard right)
         {
             return new(left.value ^ right.value);
+        }
+
+        public static Bitboard operator ^(Bitboard left, Square right)
+        {
+            return left.Toggled(right);
         }
 
         public static Bitboard operator ~(Bitboard bitboard)
@@ -153,5 +171,31 @@ namespace Chess
         {
             return new(value);
         }
+
+#if DEBUG
+        public override readonly string ToString()
+        {
+            var builder = new StringBuilder();
+
+            builder.AppendLine("  +---------------+");
+            
+            for (var rank = Square.MaxComponent; rank >= Square.MinComponent; rank--)
+            {
+                builder.Append((rank + 1) + " | ");
+
+                for (var file = Square.MinComponent; file <= Square.MaxComponent; file++)
+                {
+                    builder.Append(Contains(file, rank) ? "1  " : ".  ");
+                }
+
+                builder.AppendLine("|");
+            }
+
+            builder.AppendLine("  +---------------+");
+            builder.AppendLine("    a b c d e f g h");
+
+            return builder.ToString();
+        }
+#endif
     }
 }

@@ -1,15 +1,23 @@
-﻿using Unity.Mathematics;
+﻿using System;
+using Unity.Collections;
+using Random = Unity.Mathematics.Random;
 
 namespace Chess
 {
-    public struct Zobrist
+    public readonly struct Zobrist : IDisposable
     {
-        public readonly ulong Key => key;
+        public readonly NativeArray<ulong> Pieces;
+        public readonly NativeArray<ulong> CastlingRights;
+        public readonly NativeArray<ulong> EnPassantFile;
+        public readonly ulong SideToMove;
 
-        private readonly ulong key;
-
-        public static void Initialize(ref Board board)
+        public Zobrist(Allocator allocator)
         {
+            Pieces = new((Piece.MaxIndex + 1) * 64, allocator);
+            CastlingRights = new(16, allocator);
+            EnPassantFile = new(9, allocator);
+            SideToMove = default;
+
             var random = new Random(29426028);
             var startIndex = new Piece(Figure.Pawn, Color.White).Index;
             var endIndex = new Piece(Figure.King, Color.Black).Index;
@@ -18,21 +26,47 @@ namespace Chess
             {
                 for (var piece = startIndex; piece <= endIndex; piece++)
                 {
-                    board.ZobristPiecesArray[piece * Board.Area + square] = RandomULong(random);
+                    Pieces[piece * Board.Area + square] = RandomULong(random);
                 }
             }
 
-            for (var i = 0; i < board.ZobristCastlingRights.Length; i++)
+            for (var i = 0; i < CastlingRights.Length; i++)
             {
-                board.ZobristCastlingRights[i] = RandomULong(random);
+                CastlingRights[i] = RandomULong(random);
             }
 
-            for (var i = 0; i < board.ZobristEnPassantFile.Length; i++)
+            for (var i = 0; i < EnPassantFile.Length; i++)
             {
-                board.ZobristEnPassantFile[i] = RandomULong(random);
+                EnPassantFile[i] = RandomULong(random);
             }
 
-            board.ZobristSideToMove = RandomULong(random);
+            SideToMove = RandomULong(random);
+        }
+
+        public ulong CalculateKey(in Board board)
+        {
+            var key = 0ul;
+
+            for (var square = Square.Min.Index; square <= Square.Max.Index; square++)
+            {
+                var piece = board[new Square(square)];
+
+                if (!piece.IsEmpty)
+                {
+                    key ^= Pieces[piece.Index * Board.Area + square];
+                }
+
+                key ^= EnPassantFile[board.State.EnPassantFile];
+
+                if (board.AlliedColor == Color.Black)
+                {
+                    key ^= SideToMove;
+                }
+
+                key ^= CastlingRights[board.State.CastlingRights];
+            }
+
+            return key;
         }
 
         private static ulong RandomULong(in Random random)
@@ -44,28 +78,11 @@ namespace Chess
             return result;
         }
 
-        public Zobrist(in Board board)
+        public void Dispose()
         {
-            key = 0;
-
-            for (var square = Square.Min.Index; square <= Square.Max.Index; square++)
-            {
-                var piece = board[new Square(square)];
-
-                if (!piece.IsEmpty)
-                {
-                    key ^= board.ZobristPiecesArray[piece.Index * Board.Area + square];
-                }
-
-                key ^= board.ZobristEnPassantFile[board.State.EnPassantFile];
-
-                if (board.AlliedColor == Color.Black)
-                {
-                    key ^= board.ZobristSideToMove;
-                }
-
-                key ^= board.ZobristCastlingRights[board.State.CastlingRights];
-            }
+            Pieces.Dispose();
+            CastlingRights.Dispose();
+            EnPassantFile.Dispose();
         }
     }
 }
