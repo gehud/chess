@@ -5,7 +5,8 @@ namespace Chess
 {
     public readonly struct Square : IEquatable<Square>
     {
-        public static Square Zero => new(0);
+        public static Square Min => A1;
+        public static Square Max => H8;
 
         public static Square A1 => new(0);
         public static Square B1 => new(1);
@@ -15,7 +16,7 @@ namespace Chess
         public static Square F1 => new(5);
         public static Square G1 => new(6);
         public static Square H1 => new(7);
-                                 
+
         public static Square A8 => new(56);
         public static Square B8 => new(57);
         public static Square C8 => new(58);
@@ -24,6 +25,8 @@ namespace Chess
         public static Square F8 => new(61);
         public static Square G8 => new(62);
         public static Square H8 => new(63);
+
+        public readonly int Index => index;
 
         public readonly int2 Coordinate => new(File, Rank);
 
@@ -35,18 +38,30 @@ namespace Chess
 
         private readonly int index;
 
-        private static readonly char[] fileNotations =
-        {
-            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'
-        };
-
         public Square(int index)
         {
+#if DEBUG
+            if (index < 0 || index >= Board.Area)
+            {
+                throw new Exception("Square index is out of board range.");
+            }
+#endif
             this.index = index;
         }
 
         public Square(int file, int rank)
         {
+#if DEBUG
+            if (file < 0 || file >= Board.Size)
+            {
+                throw new Exception("Square file is out of board range.");
+            }
+
+            if (rank < 0 || rank >= Board.Size)
+            {
+                throw new Exception("Square rank is out of board range.");
+            }
+#endif
             index = rank * Board.Size + file;
         }
 
@@ -64,19 +79,9 @@ namespace Chess
             return board.GetBorderDistance(this, direction);
         }
 
-        public static implicit operator int(Square square)
-        {
-            return square.index;
-        }
-
-        public static implicit operator Square(int index)
-        {
-            return new Square(index);
-        }
-
         public override readonly string ToString()
         {
-            return $"{fileNotations[File]}{Rank + 1}";
+            return $"{"abcdefgh"[File]}{Rank + 1}";
         }
 
         public bool Equals(Square other)
@@ -97,6 +102,36 @@ namespace Chess
             }
 
             return Equals(square);
+        }
+
+        public static explicit operator int(Square square)
+        {
+            return square.Index;
+        }
+
+        public static explicit operator Square(int index)
+        {
+            return new Square(index);
+        }
+
+        public static bool operator <(Square left, Square right)
+        {
+            return left.index < right.index;
+        }
+
+        public static bool operator >(Square left, Square right)
+        {
+            return left.index > right.index;
+        }
+
+        public static bool operator ==(Square left, Square right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(Square left, Square right)
+        {
+            return !left.Equals(right);
         }
     }
 }
