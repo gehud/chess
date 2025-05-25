@@ -12,7 +12,7 @@ namespace Chess
         {
             AssertSquares();
 
-            for (var i = Square.Zero; i < Board.Area; i++)
+            for (var i = Square.Min.Index; i <= Square.Max.Index; i++)
             {
                 var square = transform.GetChild(i);
 
@@ -21,13 +21,13 @@ namespace Chess
                     DestroyImmediate(square.GetChild(0).gameObject);
                 }
 
-                if (board[i].IsEmpty)
+                if (board[new Square(i)].IsEmpty)
                 {
                     continue;
                 }
 
                 var pieceImage = Instantiate(piecePrefab, square);
-                pieceImage.UpdateImage(board[i]);
+                pieceImage.UpdateImage(board[new Square(i)]);
             }
 
             ResetSquares();
@@ -37,9 +37,9 @@ namespace Chess
         {
             foreach (var move in board.Moves)
             {
-                if (move.From == pieceSlot.transform.GetSiblingIndex())
+                if (move.From.Index == pieceSlot.transform.GetSiblingIndex())
                 {
-                    var square = transform.GetChild(move.To);
+                    var square = transform.GetChild(move.To.Index);
                     square.GetComponent<SquareImage>().SetAvailableColor();
                     square.GetComponent<PieceSlot>().IsAvailable = true;
                 }
@@ -50,7 +50,7 @@ namespace Chess
         {
             AssertSquares();
 
-            for (var i = Square.Zero; i < Board.Area; i++)
+            for (var i = Square.Min.Index; i <= Square.Max.Index; i++)
             {
                 var square = transform.GetChild(i);
                 square.GetComponent<SquareImage>().SetDefaultColor();

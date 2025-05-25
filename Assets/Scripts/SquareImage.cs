@@ -19,7 +19,6 @@ namespace Chess
         public void SetDefaultColor()
         {
             var square = (Square)transform.GetSiblingIndex();
-            Debug.Assert(square >= 0 || square < Board.Area, "Square is out of board range.");
             var isLight = (square.File + square.Rank) % 2 != 0;
             image.color = isLight ? lightColor : darkColor;
         }

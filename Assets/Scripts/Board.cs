@@ -12,8 +12,8 @@ namespace Chess
 
         public Piece this[Square coordinate]
         {
-            get => Squares[coordinate];
-            set => Squares[coordinate] = value;
+            get => Squares[coordinate.Index];
+            set => Squares[coordinate.Index] = value;
         }
 
         public Piece this[int file, int rank]
@@ -95,9 +95,9 @@ namespace Chess
 
         public Board(Allocator allocator)
         {
-            Squares = new(Area, allocator, NativeArrayOptions.UninitializedMemory);
+            Squares = new(Area, allocator);
 
-            Kings = new(2, allocator, NativeArrayOptions.UninitializedMemory);
+            Kings = new(2, allocator);
 
             PieceBitboards = new(7 * 2, allocator);
             ColorBitboards = new(2, allocator);
@@ -110,23 +110,23 @@ namespace Chess
 
             TotalPieceCountWithoutPawnsAndKings = default;
 
-            Pawns = new(2, allocator, NativeArrayOptions.UninitializedMemory);
+            Pawns = new(2, allocator);
             Pawns[0] = new(8, allocator);
             Pawns[1] = new(8, allocator);
 
-            Knights = new(2, allocator, NativeArrayOptions.UninitializedMemory);
+            Knights = new(2, allocator);
             Knights[0] = new(8, allocator);
             Knights[1] = new(8, allocator);
 
-            Bishops = new(2, allocator, NativeArrayOptions.UninitializedMemory);
+            Bishops = new(2, allocator);
             Bishops[0] = new(8, allocator);
             Bishops[1] = new(8, allocator);
 
-            Rooks = new(2, allocator, NativeArrayOptions.UninitializedMemory);
+            Rooks = new(2, allocator);
             Rooks[0] = new(8, allocator);
             Rooks[1] = new(8, allocator);
 
-            Queens = new(2, allocator, NativeArrayOptions.UninitializedMemory);
+            Queens = new(2, allocator);
             Queens[0] = new(8, allocator);
             Queens[1] = new(8, allocator);
 
@@ -148,8 +148,9 @@ namespace Chess
                 NativeArrayOptions.UninitializedMemory
             );
 
-            for (var square = Square.Zero; square < Area; square++)
+            for (var i = Square.Min.Index; i <= Square.Max.Index; i++)
             {
+                var square = new Square(i);
                 int file = square.File;
                 int rank = square.Rank;
 
@@ -158,17 +159,17 @@ namespace Chess
                 int eastSquareCount = Size - 1 - file;
                 int westSquareCount = file;
 
-                MoveLimits[square + Area * 0] = northSquareCount;
-                MoveLimits[square + Area * 1] = southSquareCount;
-                MoveLimits[square + Area * 2] = westSquareCount;
-                MoveLimits[square + Area * 3] = eastSquareCount;
-                MoveLimits[square + Area * 4] = math.min(northSquareCount, westSquareCount);
-                MoveLimits[square + Area * 5] = math.min(southSquareCount, eastSquareCount);
-                MoveLimits[square + Area * 6] = math.min(northSquareCount, eastSquareCount);
-                MoveLimits[square + Area * 7] = math.min(southSquareCount, westSquareCount);
+                MoveLimits[i + Area * 0] = northSquareCount;
+                MoveLimits[i + Area * 1] = southSquareCount;
+                MoveLimits[i + Area * 2] = westSquareCount;
+                MoveLimits[i + Area * 3] = eastSquareCount;
+                MoveLimits[i + Area * 4] = math.min(northSquareCount, westSquareCount);
+                MoveLimits[i + Area * 5] = math.min(southSquareCount, eastSquareCount);
+                MoveLimits[i + Area * 6] = math.min(northSquareCount, eastSquareCount);
+                MoveLimits[i + Area * 7] = math.min(southSquareCount, westSquareCount);
             }
 
-            SquareOffsets = new(8, allocator, NativeArrayOptions.UninitializedMemory);
+            SquareOffsets = new(8, allocator);
             SquareOffsets[0] = 8;
             SquareOffsets[1] = -8;
             SquareOffsets[2] = -1;
@@ -178,7 +179,7 @@ namespace Chess
             SquareOffsets[6] = 9;
             SquareOffsets[7] = -9;
 
-            SquareOffsets2D = new(8, allocator, NativeArrayOptions.UninitializedMemory);
+            SquareOffsets2D = new(8, allocator);
             SquareOffsets2D[0] = new(0, 1);
             SquareOffsets2D[1] = new(0, -1);
             SquareOffsets2D[2] = new(-1, 0);
@@ -188,7 +189,7 @@ namespace Chess
             SquareOffsets2D[6] = new(1, 1);
             SquareOffsets2D[7] = new(-1, -1);
 
-            AllPieces = new(7 * 2, allocator, NativeArrayOptions.UninitializedMemory);
+            AllPieces = new(7 * 2, allocator);
 
             AllPieces[0] = Pawns[0];
             AllPieces[1] = Knights[0];
@@ -204,12 +205,12 @@ namespace Chess
             AllPieces[10] = Queens[1];
             AllPieces[11] = default;
 
-            DirectionRays = new(Direction.Count * Area, allocator, NativeArrayOptions.UninitializedMemory);
+            DirectionRays = new(Direction.Count * Area, allocator);
             for (var direction = Direction.Begin; direction <= Direction.End; direction++)
             {
-                for (var square = Square.Zero; square < Area; square++)
+                for (var square = Square.Min.Index; square <= Square.Max.Index; square++)
                 {
-                    for (var i = 0; i < Size; i++)
+                    for (var i = Square.MinComponent; i <= Square.MaxComponent; i++)
                     {
                         var coordinate = square + SquareOffsets2D[direction] * i;
 
@@ -226,13 +227,13 @@ namespace Chess
                 }
             }
 
-            AlignMask = new(Area * Area, allocator, NativeArrayOptions.UninitializedMemory);
-            for (var squareA = Square.Zero; squareA < Area; squareA++)
+            AlignMask = new(Area * Area, allocator);
+            for (var squareA = Square.Min.Index; squareA <= Square.Max.Index; squareA++)
             {
-                for (var squareB = Square.Zero; squareB < Area; squareB++)
+                for (var squareB = Square.Min.Index; squareB <= Square.Max.Index; squareB++)
                 {
-                    var cA = squareA.Coordinate;
-                    var cB = squareB.Coordinate;
+                    var cA = new Square(squareA).Coordinate;
+                    var cB = new Square(squareB).Coordinate;
                     var delta = cB - cA;
                     var dir = new int2(math.sign(delta.x), math.sign(delta.y));
 
@@ -247,13 +248,13 @@ namespace Chess
                 }
             }
 
-            var orthogonalDirections = new NativeArray<int2>(4, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
+            var orthogonalDirections = new NativeArray<int2>(4, Allocator.Temp);
             orthogonalDirections[0] = new(-1, 0);
             orthogonalDirections[1] = new(0, 1);
             orthogonalDirections[2] = new(1, 0);
             orthogonalDirections[3] = new(0, -1);
 
-            var diagonalDirections = new NativeArray<int2>(4, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
+            var diagonalDirections = new NativeArray<int2>(4, Allocator.Temp);
             diagonalDirections[0] = new(-1, -1);
             diagonalDirections[1] = new(-1, 1);
             diagonalDirections[2] = new(1, 1);
@@ -264,10 +265,10 @@ namespace Chess
             WhitePawnAttacks = new(Area, allocator);
             BlackPawnAttacks = new(Area, allocator);
 
-            MagicRookMasks = new(Area, allocator, NativeArrayOptions.UninitializedMemory);
-            MagicBishopMasks = new(Area, allocator, NativeArrayOptions.UninitializedMemory);
-            MagicRookAttacks = new(Area, allocator, NativeArrayOptions.UninitializedMemory);
-            MagicBishopAttacks = new(Area, allocator, NativeArrayOptions.UninitializedMemory);
+            MagicRookMasks = new(Area, allocator);
+            MagicBishopMasks = new(Area, allocator);
+            MagicRookAttacks = new(Area, allocator);
+            MagicBishopAttacks = new(Area, allocator);
 
             MagicRookShifts = new(new int[] { 52, 52, 52, 52, 52, 52, 52, 52, 53, 53, 53, 54, 53, 53, 54, 53, 53, 54, 54, 54, 53, 53, 54, 53, 53, 54, 53, 53, 54, 54, 54, 53, 52, 54, 53, 53, 53, 53, 54, 53, 52, 53, 54, 54, 53, 53, 54, 53, 53, 54, 54, 54, 53, 53, 54, 53, 52, 53, 53, 53, 53, 53, 53, 52 }, allocator);
             MagicBishopShifts = new(new int[] { 58, 60, 59, 59, 59, 59, 60, 58, 60, 59, 59, 59, 59, 59, 59, 60, 59, 59, 57, 57, 57, 57, 59, 59, 59, 59, 57, 55, 55, 57, 59, 59, 59, 59, 57, 55, 55, 57, 59, 59, 59, 59, 57, 57, 57, 57, 59, 59, 60, 60, 59, 59, 59, 59, 60, 60, 58, 60, 59, 59, 59, 59, 59, 58 }, allocator);
@@ -284,19 +285,21 @@ namespace Chess
 
             Zobrist.Initialize(ref this);
 
-            for (var square = 0; square < Area; square++)
+            for (var i = Square.Min.Index; i <= Square.Max.Index; i++)
             {
-                MagicRookMasks[square] = CreateMagicMovementMask(orthogonalDirections, diagonalDirections, square, true);
-                MagicBishopMasks[square] = CreateMagicMovementMask(orthogonalDirections, diagonalDirections, square, false);
+                var square = new Square(i);
+                MagicRookMasks[i] = CreateMagicMovementMask(orthogonalDirections, diagonalDirections, square, true);
+                MagicBishopMasks[i] = CreateMagicMovementMask(orthogonalDirections, diagonalDirections, square, false);
             }
 
-            for (var square = 0; square < Area; square++)
+            for (var i = Square.Min.Index; i <= Square.Max.Index; i++)
             {
-                MagicRookAttacks[square] = CreateTable(orthogonalDirections, diagonalDirections, square, true, RookMagics[square], MagicRookShifts[square], allocator);
-                MagicBishopAttacks[square] = CreateTable(orthogonalDirections, diagonalDirections, square, false, BishopMagics[square], MagicBishopShifts[square], allocator);
+                var square = new Square(i);
+                MagicRookAttacks[i] = CreateTable(orthogonalDirections, diagonalDirections, square, true, RookMagics[i], MagicRookShifts[i], allocator);
+                MagicBishopAttacks[i] = CreateTable(orthogonalDirections, diagonalDirections, square, false, BishopMagics[i], MagicBishopShifts[i], allocator);
             }
 
-            var knightJumps = new NativeArray<int2>(8, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
+            var knightJumps = new NativeArray<int2>(8, Allocator.Temp);
             knightJumps[0] = new(-2, -1);
             knightJumps[1] = new(-2, 1);
             knightJumps[2] = new(-1, 2);
@@ -306,9 +309,9 @@ namespace Chess
             knightJumps[6] = new(1, -2);
             knightJumps[7] = new(-1, -2);
 
-            for (var rank = 0; rank < Size; rank++)
+            for (var rank = Square.MinComponent; rank <= Square.MaxComponent; rank++)
             {
-                for (var file = 0; file < Size; file++)
+                for (var file = Square.MinComponent; file <= Square.MaxComponent; file++)
                 {
                     InitializeSquare(orthogonalDirections, diagonalDirections, knightJumps, file, rank);
                 }
@@ -318,32 +321,32 @@ namespace Chess
             diagonalDirections.Dispose();
             knightJumps.Dispose();
         }
-        private void MovePiece(Piece piece, Square startSquare, Square targetSquare)
+        private void MovePiece(Piece piece, Square from, Square to)
         {
-            PieceBitboards[piece.Index].Toggle(startSquare);
-            PieceBitboards[piece.Index].Toggle(targetSquare);
+            PieceBitboards[piece.Index].Toggle(from);
+            PieceBitboards[piece.Index].Toggle(to);
 
-            ColorBitboards[AlliedColorIndex].Toggle(startSquare);
-            ColorBitboards[AlliedColorIndex].Toggle(targetSquare);
+            ColorBitboards[AlliedColorIndex].Toggle(from);
+            ColorBitboards[AlliedColorIndex].Toggle(to);
 
-            AllPieces[piece.Index].Remove(startSquare);
-            AllPieces[piece.Index].Add(targetSquare);
+            AllPieces[piece.Index].Remove(from);
+            AllPieces[piece.Index].Add(to);
 
-            Squares[startSquare] = Piece.Empty;
-            Squares[targetSquare] = piece;
+            this[from] = Piece.Empty;
+            this[to] = piece;
         }
 
         public void MakeMove(Move move, bool inSearch = false)
         {
             // Get info about move
-            var startSquare = move.From;
-            var targetSquare = move.To;
+            var from = move.From;
+            var to = move.To;
             var isPromotion = (move.Flags & MoveFlags.Promotion) != MoveFlags.None;
             var isEnPassant = (move.Flags & MoveFlags.EnPassant) != MoveFlags.None;
 
-            var movedPiece = Squares[startSquare];
+            var movedPiece = this[from];
             var movedPieceType = movedPiece.Figure;
-            var capturedPiece = isEnPassant ? new Piece(Figure.Pawn, EnemyColor) : Squares[targetSquare];
+            var capturedPiece = isEnPassant ? new Piece(Figure.Pawn, EnemyColor) : this[to];
             var capturedPieceType = capturedPiece.Figure;
 
             var prevCastleState = State.CastlingRights;
@@ -352,16 +355,16 @@ namespace Chess
             var newCastlingRights = State.CastlingRights;
             var newEnPassantFile = 0;
 
-            MovePiece(movedPiece, startSquare, targetSquare);
+            MovePiece(movedPiece, from, to);
 
             if (!capturedPiece.IsEmpty)
             {
-                var captureSquare = targetSquare;
+                var captureSquare = to;
 
                 if (isEnPassant)
                 {
-                    captureSquare = targetSquare + (IsWhiteAllied ? -8 : 8);
-                    Squares[captureSquare] = Piece.Empty;
+                    captureSquare = to + (IsWhiteAllied ? -8 : 8);
+                    this[captureSquare] = Piece.Empty;
                 }
                 if (capturedPieceType != Figure.Pawn)
                 {
@@ -372,32 +375,32 @@ namespace Chess
                 PieceBitboards[capturedPiece.Index].Toggle(captureSquare);
                 ColorBitboards[EnemyColorIndex].Toggle(captureSquare);
 
-                newZobristKey ^= ZobristPiecesArray[capturedPiece.Index * Area + captureSquare];
+                newZobristKey ^= ZobristPiecesArray[capturedPiece.Index * Area + captureSquare.Index];
             }
 
             if (movedPieceType == Figure.King)
             {
-                Kings[AlliedColorIndex] = targetSquare;
+                Kings[AlliedColorIndex] = to;
                 newCastlingRights &= IsWhiteAllied ? 0b1100 : 0b0011;
 
                 if ((move.Flags & MoveFlags.Castling) != MoveFlags.None)
                 {
                     var rookPiece = new Piece(Figure.Rook, AlliedColor);
-                    var kingside = targetSquare == Square.G1 || targetSquare == Square.G8;
-                    var castlingRookFromIndex = kingside ? targetSquare + 1 : targetSquare - 2;
-                    var castlingRookToIndex = kingside ? targetSquare - 1 : targetSquare + 1;
+                    var kingside = to == Square.G1 || to == Square.G8;
+                    var castlingRookFrom = kingside ? to + 1 : to - 2;
+                    var castlingRookTo = kingside ? to - 1 : to + 1;
 
-                    PieceBitboards[rookPiece.Index].Toggle(castlingRookFromIndex);
-                    PieceBitboards[rookPiece.Index].Toggle(castlingRookToIndex);
-                    ColorBitboards[AlliedColorIndex].Toggle(castlingRookFromIndex);
-                    ColorBitboards[AlliedColorIndex].Toggle(castlingRookToIndex);
-                    AllPieces[rookPiece.Index].Remove(castlingRookFromIndex);
-                    AllPieces[rookPiece.Index].Add(castlingRookToIndex);
-                    this[castlingRookFromIndex] = Piece.Empty;
-                    this[castlingRookToIndex] = new Piece(Figure.Rook, AlliedColor);
+                    PieceBitboards[rookPiece.Index].Toggle(castlingRookFrom);
+                    PieceBitboards[rookPiece.Index].Toggle(castlingRookTo);
+                    ColorBitboards[AlliedColorIndex].Toggle(castlingRookFrom);
+                    ColorBitboards[AlliedColorIndex].Toggle(castlingRookTo);
+                    AllPieces[rookPiece.Index].Remove(castlingRookFrom);
+                    AllPieces[rookPiece.Index].Add(castlingRookTo);
+                    this[castlingRookFrom] = Piece.Empty;
+                    this[castlingRookTo] = new Piece(Figure.Rook, AlliedColor);
 
-                    newZobristKey ^= ZobristPiecesArray[rookPiece.Index * Area + castlingRookFromIndex];
-                    newZobristKey ^= ZobristPiecesArray[rookPiece.Index * Area + castlingRookToIndex];
+                    newZobristKey ^= ZobristPiecesArray[rookPiece.Index * Area + castlingRookFrom.Index];
+                    newZobristKey ^= ZobristPiecesArray[rookPiece.Index * Area + castlingRookTo.Index];
                 }
             }
 
@@ -426,45 +429,45 @@ namespace Chess
 
                 var promotionPiece = new Piece(promotionPieceType, AlliedColor);
 
-                PieceBitboards[movedPiece.Index].Toggle(targetSquare);
-                PieceBitboards[promotionPiece.Index].Toggle(targetSquare);
+                PieceBitboards[movedPiece.Index].Toggle(to);
+                PieceBitboards[promotionPiece.Index].Toggle(to);
 
-                AllPieces[movedPiece.Index].Remove(targetSquare);
-                AllPieces[promotionPiece.Index].Add(targetSquare);
+                AllPieces[movedPiece.Index].Remove(to);
+                AllPieces[promotionPiece.Index].Add(to);
 
-                this[targetSquare] = promotionPiece;
+                this[to] = promotionPiece;
             }
 
             if ((move.Flags & MoveFlags.DoublePawnMove) != MoveFlags.None)
             {
-                var file = startSquare.File;
+                var file = from.File;
                 newEnPassantFile = file;
                 newZobristKey ^= ZobristEnPassantFile[file];
             }
 
             if (prevCastleState != 0)
             {
-                if (targetSquare == Square.H1 || startSquare == Square.H1)
+                if (to == Square.H1 || from == Square.H1)
                 {
                     newCastlingRights &= State.ClearWhiteKingsideMask;
                 }
-                else if (targetSquare == Square.A1 || startSquare == Square.A1)
+                else if (to == Square.A1 || from == Square.A1)
                 {
                     newCastlingRights &= State.ClearWhiteQueensideMask;
                 }
-                if (targetSquare == Square.H8 || startSquare == Square.H8)
+                if (to == Square.H8 || from == Square.H8)
                 {
                     newCastlingRights &= State.ClearBlackKingsideMask;
                 }
-                else if (targetSquare == Square.A8 || startSquare == Square.A8)
+                else if (to == Square.A8 || from == Square.A8)
                 {
                     newCastlingRights &= State.ClearBlackQueensideMask;
                 }
             }
 
             newZobristKey ^= ZobristSideToMove;
-            newZobristKey ^= ZobristPiecesArray[movedPiece.Index * Area + startSquare];
-            newZobristKey ^= ZobristPiecesArray[this[targetSquare].Index * Area + targetSquare];
+            newZobristKey ^= ZobristPiecesArray[movedPiece.Index * Area + from.Index];
+            newZobristKey ^= ZobristPiecesArray[this[to].Index * Area + to.Index];
             newZobristKey ^= ZobristEnPassantFile[prevEnPassantFile];
 
             if (newCastlingRights != prevCastleState)
@@ -669,10 +672,10 @@ namespace Chess
                 for (var j = 1; j < 8; j++)
                 {
                     var targetCoordinate = coordinate + directions[i] * j;
-                    var targetSquare = new Square(targetCoordinate);
 
                     if (IsCoordinateValid(targetCoordinate))
                     {
+                        var targetSquare = new Square(targetCoordinate);
                         board.Include(targetSquare);
                         if (pattern.Contains(targetSquare))
                         {
@@ -693,8 +696,9 @@ namespace Chess
         {
             var squares = new NativeList<Square>(Allocator.Temp);
 
-            for (var square = Square.Zero; square < Area; square++)
+            for (var i = Square.Min.Index; i <= Square.Max.Index; i++)
             {
+                var square = new Square(i);
                 if (mask.Contains(square))
                 {
                     squares.Add(square);
@@ -710,7 +714,7 @@ namespace Chess
                 for (var j = 0; j < squares.Length; j++)
                 {
                     var bit = (i >> j) & i;
-                    blockerBoards[i] |= (Bitboard)(ulong)(bit << squares[j]);
+                    blockerBoards[i] |= (Bitboard)(ulong)(bit << squares[j].Index);
                 }
             }
 
@@ -760,12 +764,12 @@ namespace Chess
 
                 if (IsCoordinateValid(orthogonalFile, orthogonalRank))
                 {
-                    KingMoves[square].Include(orthogonalFile, orthogonalRank);
+                    KingMoves[square.Index].Include(orthogonalFile, orthogonalRank);
                 }
 
                 if (IsCoordinateValid(diagonalFile, diagonalRank))
                 {
-                    KingMoves[square].Include(diagonalFile, diagonalRank);
+                    KingMoves[square.Index].Include(diagonalFile, diagonalRank);
                 }
             }
 
@@ -776,57 +780,57 @@ namespace Chess
 
                 if (IsCoordinateValid(jumpFile, jumpRank))
                 {
-                    KnightMoves[square].Include(jumpFile, jumpRank);
+                    KnightMoves[square.Index].Include(jumpFile, jumpRank);
                 }
             }
 
             if (IsCoordinateValid(file + 1, rank + 1))
             {
-                WhitePawnAttacks[square].Include(file + 1, rank + 1);
+                WhitePawnAttacks[square.Index].Include(file + 1, rank + 1);
             }
 
             if (IsCoordinateValid(file - 1, rank + 1))
             {
-                WhitePawnAttacks[square].Include(file - 1, rank + 1);
+                WhitePawnAttacks[square.Index].Include(file - 1, rank + 1);
             }
 
             if (IsCoordinateValid(file + 1, rank - 1))
             {
-                BlackPawnAttacks[square].Include(file + 1, rank - 1);
+                BlackPawnAttacks[square.Index].Include(file + 1, rank - 1);
             }
 
             if (IsCoordinateValid(file - 1, rank - 1))
             {
-                BlackPawnAttacks[square].Include(file - 1, rank - 1);
+                BlackPawnAttacks[square.Index].Include(file - 1, rank - 1);
             }
         }
 
         public static bool IsCoordinateValid(int file, int rank)
         {
-            return file >= 0
-                && file < Size
-                && rank >= 0
-                && rank < Size;
+            return file >= Square.MinComponent
+                && file <= Square.MaxComponent
+                && rank >= Square.MinComponent
+                && rank <= Square.MaxComponent;
         }
 
         public static bool IsCoordinateValid(int2 coordinate) => IsCoordinateValid(coordinate.x, coordinate.y);
 
         public Bitboard GetRay(Square square, Direction direction)
         {
-            return DirectionRays[square + Area * direction];
+            return DirectionRays[square.Index + Area * direction];
         }
 
         public Bitboard GetAlignMask(Square from, Square to)
         {
-            return AlignMask[from * Area + to];
+            return AlignMask[from.Index * Area + to.Index];
         }
 
         public Bitboard GetPawnAttacks(Square square, Color color)
         {
             return color switch
             {
-                Color.Black => BlackPawnAttacks[square],
-                Color.White => WhitePawnAttacks[square],
+                Color.Black => BlackPawnAttacks[square.Index],
+                Color.White => WhitePawnAttacks[square.Index],
                 _ => default
             };
         }
@@ -848,14 +852,14 @@ namespace Chess
 
         public Bitboard GetRookAttacks(Square square, Bitboard blockers)
         {
-            var key = ((blockers & MagicRookMasks[square]) * RookMagics[square]) >> MagicRookShifts[square];
-            return MagicRookAttacks[square][(int)(ulong)key];
+            var key = ((blockers & MagicRookMasks[square.Index]) * new Bitboard(RookMagics[square.Index])) >> MagicRookShifts[square.Index];
+            return MagicRookAttacks[square.Index][(int)(ulong)key];
         }
 
         public Bitboard GetBishopAttacks(Square square, Bitboard blockers)
         {
-            var key = ((blockers & MagicBishopMasks[square]) * BishopMagics[square]) >> MagicBishopShifts[square];
-            return MagicBishopAttacks[square][(int)(ulong)key];
+            var key = ((blockers & MagicBishopMasks[square.Index]) * new Bitboard(BishopMagics[square.Index])) >> MagicBishopShifts[square.Index];
+            return MagicBishopAttacks[square.Index][(int)(ulong)key];
         }
 
         public int GetBorderDistance(Square square, Direction direction)
@@ -865,14 +869,15 @@ namespace Chess
 
         public Square GetTranslatedSquare(Square square, Direction direction, int distance = 1)
         {
-            return (Square)(square + SquareOffsets[(int)direction] * distance);
+            return square + SquareOffsets[(int)direction] * distance;
         }
 
         public void Load(in Fen fen)
         {
-            for (var square = Square.Zero; square < Area; square++)
+            for (var i = Square.Min.Index; i <= Square.Max.Index; i++)
             {
-                var piece = fen.Squares[square];
+                var square = new Square(i);
+                var piece = fen.Squares[i];
                 var figure = piece.Figure;
                 var color = piece.Color;
                 this[square] = piece;

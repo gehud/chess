@@ -55,6 +55,11 @@ namespace Chess
             GeneratePawnMoves();
         }
 
+        private void AddMove(Square from, Square to, MoveFlags flags = MoveFlags.None)
+        {
+            Board.Moves.Add(new Move(from, to, flags));
+        }
+
         private void Initialize()
         {
             isWhiteAllied = Board.AlliedColor == Color.White;
@@ -91,7 +96,7 @@ namespace Chess
             while (!enemyKnightsBoard.IsEmpty)
             {
                 var knightSquare = enemyKnightsBoard.Pop();
-                var knightMoves = Board.KnightMoves[knightSquare];
+                var knightMoves = Board.KnightMoves[knightSquare.Index];
                 knightAttackSquares |= knightMoves;
 
                 if (!(knightMoves & alliedKingBoard).IsEmpty)
@@ -106,12 +111,12 @@ namespace Chess
             if (pawnAttackSquares.Contains(alliedKingSquare))
             {
                 MakeCheck();
-                var possiblePawnAttackOrigins = isWhiteAllied ? Board.WhitePawnAttacks[alliedKingSquare] : Board.BlackPawnAttacks[alliedKingSquare];
+                var possiblePawnAttackOrigins = isWhiteAllied ? Board.WhitePawnAttacks[alliedKingSquare.Index] : Board.BlackPawnAttacks[alliedKingSquare.Index];
                 var pawnChecks = enemyPawnBoard & possiblePawnAttackOrigins;
                 checkRayMask |= pawnChecks;
             }
 
-            attackSquaresNoPawns = slidingAttackSquares | knightAttackSquares | Board.KingMoves[enemyKingSquare];
+            attackSquaresNoPawns = slidingAttackSquares | knightAttackSquares | Board.KingMoves[enemyKingSquare.Index];
             attackSquares = attackSquaresNoPawns | pawnAttackSquares;
 
             if (!isInCheck)
@@ -128,7 +133,7 @@ namespace Chess
 
         private void UpdateSlidingAttack(Bitboard board, bool isOrthogonal)
         {
-            var blockers = (ulong)Board.AllPiecesBitboard & ~(1ul << alliedKingSquare);
+            var blockers = Board.AllPiecesBitboard.Without(alliedKingSquare);
 
             while (!board.IsEmpty)
             {
@@ -230,12 +235,12 @@ namespace Chess
         private void GenerateKingMoves()
         {
             var legalMask = ~(attackSquares | alliedPieces);
-            var kingMoves = Board.KingMoves[alliedKingSquare] & legalMask & moveTypeMask;
+            var kingMoves = Board.KingMoves[alliedKingSquare.Index] & legalMask & moveTypeMask;
 
-            while (kingMoves != 0)
+            while (!kingMoves.IsEmpty)
             {
                 var square = kingMoves.Pop();
-                Board.Moves.Add(new Move(alliedKingSquare, square));
+                AddMove(alliedKingSquare, square);
             }
 
             if (!isInCheck && QuietMoves)
@@ -248,19 +253,19 @@ namespace Chess
                     if ((castleBlockers & castleMask).IsEmpty)
                     {
                         var targetSquare = isWhiteAllied ? Square.G1 : Square.G8;
-                        Board.Moves.Add(new Move(alliedKingSquare, targetSquare, MoveFlags.Castling));
+                        AddMove(alliedKingSquare, targetSquare, MoveFlags.Castling);
                     }
                 }
 
                 if (Board.State.HasQueensideCastleRight(isWhiteAllied))
                 {
-                    ulong castleMask = isWhiteAllied ? Bitboard.WhiteQueensideMask2 : Bitboard.BlackQueensideMask2;
-                    ulong castleBlockMask = isWhiteAllied ? Bitboard.WhiteQueensideMask : Bitboard.BlackQueensideMask;
+                    var castleMask = isWhiteAllied ? Bitboard.WhiteQueensideMask2 : Bitboard.BlackQueensideMask2;
+                    var castleBlockMask = isWhiteAllied ? Bitboard.WhiteQueensideMask : Bitboard.BlackQueensideMask;
 
                     if ((castleMask & castleBlockers).IsEmpty && (castleBlockMask & Board.AllPiecesBitboard).IsEmpty)
                     {
                         var targetSquare = isWhiteAllied ? Square.C1 : Square.C8;
-                        Board.Moves.Add(new Move(alliedKingSquare, targetSquare, MoveFlags.Castling));
+                        AddMove(alliedKingSquare, targetSquare, MoveFlags.Castling);
                     }
                 }
             }
@@ -297,7 +302,7 @@ namespace Chess
                 while (!moveSquares.IsEmpty)
                 {
                     var targetSquare = moveSquares.Pop();
-                    Board.Moves.Add(new Move(square, targetSquare));
+                    AddMove(square, targetSquare);
                 }
             }
 
@@ -314,7 +319,7 @@ namespace Chess
                 while (!moveSquares.IsEmpty)
                 {
                     var targetSquare = moveSquares.Pop();
-                    Board.Moves.Add(new Move(square, targetSquare));
+                    AddMove(square, targetSquare);
                 }
             }
         }
@@ -328,12 +333,12 @@ namespace Chess
             while (!knights.IsEmpty)
             {
                 var square = knights.Pop();
-                var moveSquares = Board.KnightMoves[square] & moveMask;
+                var moveSquares = Board.KnightMoves[square.Index] & moveMask;
 
                 while (!moveSquares.IsEmpty)
                 {
                     var targetSquare = moveSquares.Pop();
-                    Board.Moves.Add(new Move(square, targetSquare));
+                    AddMove(square, targetSquare);
                 }
             }
         }
@@ -373,7 +378,7 @@ namespace Chess
                     var startSquare = targetSquare - pushOffset;
                     if (!IsPinned(startSquare) || Board.GetAlignMask(startSquare, alliedKingSquare) == Board.GetAlignMask(targetSquare, alliedKingSquare))
                     {
-                        Board.Moves.Add(new Move(startSquare, targetSquare));
+                        AddMove(startSquare, targetSquare);
                     }
                 }
 
@@ -386,7 +391,7 @@ namespace Chess
                     var startSquare = targetSquare - pushOffset * 2;
                     if (!IsPinned(startSquare) || Board.GetAlignMask(startSquare, alliedKingSquare) == Board.GetAlignMask(targetSquare, alliedKingSquare))
                     {
-                        Board.Moves.Add(new Move(startSquare, targetSquare, MoveFlags.DoublePawnMove));
+                        AddMove(startSquare, targetSquare, MoveFlags.DoublePawnMove);
                     }
                 }
             }
@@ -398,7 +403,7 @@ namespace Chess
 
                 if (!IsPinned(startSquare) || Board.GetAlignMask(startSquare, alliedKingSquare) == Board.GetAlignMask(targetSquare, alliedKingSquare))
                 {
-                    Board.Moves.Add(new Move(startSquare, targetSquare));
+                    AddMove(startSquare, targetSquare);
                 }
             }
 
@@ -409,7 +414,7 @@ namespace Chess
 
                 if (!IsPinned(startSquare) || Board.GetAlignMask(startSquare, alliedKingSquare) == Board.GetAlignMask(targetSquare, alliedKingSquare))
                 {
-                    Board.Moves.Add(new Move(startSquare, targetSquare));
+                    AddMove(startSquare, targetSquare);
                 }
             }
 
@@ -450,12 +455,12 @@ namespace Chess
             {
                 var epFileIndex = Board.State.EnPassantFile - 1;
                 var epRankIndex = isWhiteAllied ? 5 : 2;
-                var targetSquare = epRankIndex * 8 + epFileIndex;
+                var targetSquare = new Square(epRankIndex * 8 + epFileIndex);
                 var capturedPawnSquare = targetSquare - pushOffset;
 
                 if (checkRayMask.Contains(capturedPawnSquare))
                 {
-                    var pawnsThatCanCaptureEp = pawns & Board.GetPawnAttacks((Bitboard)(1ul << targetSquare), Board.AlliedColor);
+                    var pawnsThatCanCaptureEp = pawns & Board.GetPawnAttacks(Bitboard.Empty.With(targetSquare), Board.AlliedColor);
 
                     while (!pawnsThatCanCaptureEp.IsEmpty)
                     {
@@ -464,7 +469,7 @@ namespace Chess
                         {
                             if (!IsInCheckAfterEnPassant(startSquare, targetSquare, capturedPawnSquare))
                             {
-                                Board.Moves.Add(new Move(startSquare, targetSquare, MoveFlags.EnPassant));
+                                AddMove(startSquare, targetSquare, MoveFlags.EnPassant);
                             }
                         }
                     }
@@ -472,15 +477,15 @@ namespace Chess
             }
         }
 
-        private bool IsInCheckAfterEnPassant(Square startSquare, int targetSquare, int capturedPawnSquare)
+        private bool IsInCheckAfterEnPassant(Square startSquare, Square targetSquare, Square capturedPawnSquare)
         {
             var enemyOrtho = Board.EnemyOrthogonalSliders;
 
             while (!enemyOrtho.IsEmpty)
             {
-                var maskedBlockers = allPieces ^ (1ul << capturedPawnSquare | 1ul << startSquare | 1ul << targetSquare);
+                var maskedBlockers = allPieces ^ Bitboard.Empty.With(capturedPawnSquare).With(startSquare).With(targetSquare);
                 var rookAttacks = Board.GetRookAttacks(alliedKingSquare, maskedBlockers);
-                return (rookAttacks & enemyOrtho) != 0;
+                return !(rookAttacks & enemyOrtho).IsEmpty;
             }
 
             return false;
@@ -488,10 +493,10 @@ namespace Chess
 
         private void GeneratePromotions(Square from, Square to)
         {
-            Board.Moves.Add(new Move(from, to, MoveFlags.QueenPromotion));
-            Board.Moves.Add(new Move(from, to, MoveFlags.RookPromotion));
-            Board.Moves.Add(new Move(from, to, MoveFlags.BishopPromotion));
-            Board.Moves.Add(new Move(from, to, MoveFlags.KnightPromotion));
+            AddMove(from, to, MoveFlags.QueenPromotion);
+            AddMove(from, to, MoveFlags.RookPromotion);
+            AddMove(from, to, MoveFlags.BishopPromotion);
+            AddMove(from, to, MoveFlags.KnightPromotion);
         }
     }
 }

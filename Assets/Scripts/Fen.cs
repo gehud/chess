@@ -53,7 +53,7 @@ namespace Chess
                             _ => Figure.None
                         };
 
-                        Squares[new Square(file, rank)] = new Piece(figure, color);
+                        Squares[new Square(file, rank).Index] = new Piece(figure, color);
                         ++file;
                     }
                 }

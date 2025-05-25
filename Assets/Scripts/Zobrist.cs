@@ -14,7 +14,7 @@ namespace Chess
             var startIndex = new Piece(Figure.Pawn, Color.White).Index;
             var endIndex = new Piece(Figure.King, Color.Black).Index;
 
-            for (var square = Square.Zero; square < Board.Area; square++)
+            for (var square = Square.Min.Index; square <= Square.Max.Index; square++)
             {
                 for (var piece = startIndex; piece <= endIndex; piece++)
                 {
@@ -48,9 +48,9 @@ namespace Chess
         {
             key = 0;
 
-            for (var square = Square.Zero; square < Board.Area; square++)
+            for (var square = Square.Min.Index; square <= Square.Max.Index; square++)
             {
-                var piece = board[square];
+                var piece = board[new Square(square)];
 
                 if (!piece.IsEmpty)
                 {

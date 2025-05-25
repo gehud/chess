@@ -26,6 +26,11 @@ namespace Chess
         public static Square G8 => new(62);
         public static Square H8 => new(63);
 
+        public const int MinIndex = 0;
+        public const int MaxIndex = Board.Area - 1;
+        public const int MinComponent = 0;
+        public const int MaxComponent = Board.Size - 1;
+
         public readonly int Index => index;
 
         public readonly int2 Coordinate => new(File, Rank);
@@ -41,7 +46,7 @@ namespace Chess
         public Square(int index)
         {
 #if DEBUG
-            if (index < 0 || index >= Board.Area)
+            if (index < MinIndex || index > MaxIndex)
             {
                 throw new Exception("Square index is out of board range.");
             }
@@ -52,12 +57,12 @@ namespace Chess
         public Square(int file, int rank)
         {
 #if DEBUG
-            if (file < 0 || file >= Board.Size)
+            if (file < MinComponent || file > MaxComponent)
             {
                 throw new Exception("Square file is out of board range.");
             }
 
-            if (rank < 0 || rank >= Board.Size)
+            if (rank < MinComponent || rank > MaxComponent)
             {
                 throw new Exception("Square rank is out of board range.");
             }
@@ -119,9 +124,29 @@ namespace Chess
             return left.index < right.index;
         }
 
+        public static bool operator <=(Square left, Square right)
+        {
+            return left.index <= right.index;
+        }
+
+        public static bool operator >=(Square left, Square right)
+        {
+            return left.index >= right.index;
+        }
+
         public static bool operator >(Square left, Square right)
         {
             return left.index > right.index;
+        }
+
+        public static Square operator+(Square square, int shift)
+        {
+            return new(square.Index + shift);
+        }
+
+        public static Square operator -(Square square, int shift)
+        {
+            return new(square.Index - shift);
         }
 
         public static bool operator ==(Square left, Square right)
