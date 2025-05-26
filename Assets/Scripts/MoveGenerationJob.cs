@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Chess
 {
-    public struct MovesJob : IJob
+    public struct MoveGenerationJob : IJob
     {
         [NativeDisableContainerSafetyRestriction]
         public Board Board;
@@ -75,7 +75,7 @@ namespace Chess
 
             allPieces = Board.AllPiecesBitboard;
             emptySquares = ~allPieces;
-            emptyOrEnemyPieces = enemyPieces | enemyPieces;
+            emptyOrEnemyPieces = emptySquares | enemyPieces;
 
             moveTypeMask = QuietMoves ? Bitboard.All : enemyPieces;
         }
@@ -288,7 +288,6 @@ namespace Chess
         private void GenerateSlidingMoves()
         {
             var moveMask = emptyOrEnemyPieces & checkRayMask & moveTypeMask;
-
             var orthogonalSliders = Board.AlliedOrthogonalSliders;
             var diagonalSliders = Board.AlliedDiagonalSliders;
 

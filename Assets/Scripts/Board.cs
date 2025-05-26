@@ -2,6 +2,7 @@
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEngine;
 
 namespace Chess
 {
@@ -618,7 +619,7 @@ namespace Chess
         {
             Moves.Clear();
 
-            new MovesJob
+            new MoveGenerationJob
             {
                 Board = this,
                 QuietMoves = true,
@@ -700,7 +701,7 @@ namespace Chess
             {
                 for (var j = 0; j < squares.Length; j++)
                 {
-                    var bit = (i >> j) & i;
+                    var bit = (i >> j) & 1;
                     blockerBoards[i] |= (Bitboard)(ulong)(bit << squares[j].Index);
                 }
             }
@@ -763,7 +764,7 @@ namespace Chess
             for (var i = 0; i < knightJumps.Length; i++)
             {
                 var jumpFile = file + knightJumps[i].x;
-                var jumpRank = file + knightJumps[i].y;
+                var jumpRank = rank + knightJumps[i].y;
 
                 if (IsCoordinateValid(jumpFile, jumpRank))
                 {
