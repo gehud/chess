@@ -26,21 +26,21 @@ namespace Chess
             {
                 for (var piece = startIndex; piece <= endIndex; piece++)
                 {
-                    Pieces[piece * Board.Area + square] = RandomULong(random);
+                    Pieces[piece * Board.Area + square] = random.NextULong();
                 }
             }
 
             for (var i = 0; i < CastlingRights.Length; i++)
             {
-                CastlingRights[i] = RandomULong(random);
+                CastlingRights[i] = random.NextULong();
             }
 
             for (var i = 0; i < EnPassantFile.Length; i++)
             {
-                EnPassantFile[i] = RandomULong(random);
+                EnPassantFile[i] = random.NextULong();
             }
 
-            SideToMove = RandomULong(random);
+            SideToMove = random.NextULong();
         }
 
         public ulong CalculateKey(in Board board)
@@ -67,15 +67,6 @@ namespace Chess
             }
 
             return key;
-        }
-
-        private static ulong RandomULong(in Random random)
-        {
-            var value = random.NextUInt2();
-            var result = 0ul;
-            result |= value.x << sizeof(uint);
-            result |= value.y;
-            return result;
         }
 
         public void Dispose()

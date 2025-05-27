@@ -4,6 +4,7 @@
     "references": [
         "Chess",
         "Unity.Collections",
+        "Unity.Mathematics",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

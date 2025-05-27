@@ -1,5 +1,6 @@
 ﻿using System;
 using Unity.Mathematics;
+using UnityEditor;
 
 namespace Chess
 {
@@ -8,23 +9,23 @@ namespace Chess
         public static Square Min => A1;
         public static Square Max => H8;
 
-        public static Square A1 => new(0);
-        public static Square B1 => new(1);
-        public static Square C1 => new(2);
-        public static Square D1 => new(3);
-        public static Square E1 => new(4);
-        public static Square F1 => new(5);
-        public static Square G1 => new(6);
-        public static Square H1 => new(7);
+        public static Square A1 => new(SquareName.A1);
+        public static Square B1 => new(SquareName.B1);
+        public static Square C1 => new(SquareName.C1);
+        public static Square D1 => new(SquareName.D1);
+        public static Square E1 => new(SquareName.E1);
+        public static Square F1 => new(SquareName.F1);
+        public static Square G1 => new(SquareName.G1);
+        public static Square H1 => new(SquareName.H1);
 
-        public static Square A8 => new(56);
-        public static Square B8 => new(57);
-        public static Square C8 => new(58);
-        public static Square D8 => new(59);
-        public static Square E8 => new(60);
-        public static Square F8 => new(61);
-        public static Square G8 => new(62);
-        public static Square H8 => new(63);
+        public static Square A8 => new(SquareName.A8);
+        public static Square B8 => new(SquareName.B8);
+        public static Square C8 => new(SquareName.C8);
+        public static Square D8 => new(SquareName.D8);
+        public static Square E8 => new(SquareName.E8);
+        public static Square F8 => new(SquareName.F8);
+        public static Square G8 => new(SquareName.G8);
+        public static Square H8 => new(SquareName.H8);
 
         public const int MinIndex = 0;
         public const int MaxIndex = Board.Area - 1;
@@ -52,6 +53,11 @@ namespace Chess
             }
 #endif
             this.index = index;
+        }
+
+        public Square(SquareName name)
+        {
+            index = (int)name;
         }
 
         public Square(int file, int rank)
@@ -117,6 +123,16 @@ namespace Chess
         public static explicit operator Square(int index)
         {
             return new Square(index);
+        }
+
+        public static explicit operator SquareName(Square square)
+        {
+            return (SquareName)square.index;
+        }
+
+        public static explicit operator Square(SquareName name)
+        {
+            return new Square(name);
         }
 
         public static bool operator <(Square left, Square right)

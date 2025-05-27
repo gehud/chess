@@ -52,6 +52,8 @@ namespace Chess
 
         public readonly bool Contains(int file, int rank) => Contains(new Square(file, rank));
 
+        public readonly bool Contains(SquareName name) => Contains(new Square(name));
+
         public void Include(Square square) => value |= 1ul << square.Index;
 
         public void Include(int file, int rank) => Include(new Square(file, rank));
@@ -62,6 +64,8 @@ namespace Chess
             with.Include(square);
             return with;
         }
+
+        public readonly Bitboard With(SquareName name) => With(new Square(name));
 
         public void Exclude(Square square) => value &= ~(1ul << square.Index);
 
