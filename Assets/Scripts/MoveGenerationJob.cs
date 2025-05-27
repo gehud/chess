@@ -14,15 +14,13 @@ namespace Chess
         public bool QuietMoves;
 
         private bool isWhiteAllied;
-        private int alliedIndex;
-        private int enemyIndex;
         private Square alliedKingSquare;
 
         private bool isInCheck;
         private bool isInDoubleCheck;
 
         private Bitboard checkRayMask;
-        
+
         private Bitboard pinSquares;
         private Bitboard nonPinSquares;
         private Bitboard attackSquaresNoPawns;
@@ -64,14 +62,11 @@ namespace Chess
         {
             isWhiteAllied = Board.AlliedColor == Color.White;
 
-            alliedIndex = (int)Board.AlliedColor;
-            enemyIndex = (int)Board.EnemyColor;
+            alliedKingSquare = Board.Kings[(int)Board.AlliedColor];
+            enemyKingSquare = Board.Kings[(int)Board.EnemyColor];
 
-            alliedKingSquare = Board.Kings[alliedIndex];
-            enemyKingSquare = Board.Kings[enemyIndex];
-
-            alliedPieces = Board.ColorBitboards[alliedIndex];
-            enemyPieces = Board.ColorBitboards[enemyIndex];
+            alliedPieces = Board.ColorBitboards[(int)Board.AlliedColor];
+            enemyPieces = Board.ColorBitboards[(int)Board.EnemyColor];
 
             allPieces = Board.AllPiecesBitboard;
             emptySquares = ~allPieces;
@@ -85,8 +80,6 @@ namespace Chess
             var slidingAttackSquares = FindSlidingValidationSquares();
 
             FindPinAndCheckSquares();
-
-            nonPinSquares = ~pinSquares;
 
             var alliedKingBoard = Board.PieceBitboards[new Piece(Figure.King, Board.AlliedColor).Index];
 
@@ -108,7 +101,7 @@ namespace Chess
             }
 
             var enemyPawnBoard = Board.PieceBitboards[new Piece(Figure.Pawn, Board.EnemyColor).Index];
-            pawnAttackSquares = Board.GetPawnAttacks(enemyPawnBoard, Board.EnemyColor);
+            pawnAttackSquares = Board.GetPawnAttacks(enemyPawnBoard, !isWhiteAllied);
             if (pawnAttackSquares.Contains(alliedKingSquare))
             {
                 MakeCheck();
@@ -163,10 +156,10 @@ namespace Chess
             var startDirection = Direction.North;
             var endDirection = Direction.SouthWest;
 
-            if (Board.Queens[enemyIndex].Count == 0)
+            if (Board.Queens[(int)Board.EnemyColor].Count == 0)
             {
-                startDirection = (Board.Rooks[enemyIndex].Count > 0) ? Direction.North : Direction.East;
-                endDirection = (Board.Bishops[enemyIndex].Count > 0) ? Direction.NorthWest : Direction.SouthWest;
+                startDirection = (Board.Rooks[(int)Board.EnemyColor].Count > 0) ? Direction.North : Direction.East;
+                endDirection = (Board.Bishops[(int)Board.EnemyColor].Count > 0) ? Direction.SouthWest : Direction.East;
             }
 
             for (var direction = startDirection; direction <= endDirection; direction++)
@@ -231,6 +224,8 @@ namespace Chess
                     break;
                 }
             }
+
+            nonPinSquares = ~pinSquares;
         }
 
         private readonly bool IsPinningDirection(Direction direction, Figure figure)
@@ -468,7 +463,7 @@ namespace Chess
 
                 if (checkRayMask.Contains(capturedPawnSquare))
                 {
-                    var pawnsThatCanCaptureEp = pawns & Board.GetPawnAttacks(Bitboard.Empty.With(targetSquare), Board.AlliedColor);
+                    var pawnsThatCanCaptureEp = pawns & Board.GetPawnAttacks(Bitboard.Empty.With(targetSquare), !isWhiteAllied);
 
                     while (!pawnsThatCanCaptureEp.IsEmpty)
                     {

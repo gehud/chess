@@ -204,11 +204,11 @@ namespace Chess
             DirectionRays = new(Direction.Count * Area, allocator);
             for (var direction = Direction.Begin; direction <= Direction.End; direction++)
             {
-                for (var square = Square.Min.Index; square <= Square.Max.Index; square++)
+                for (var square = Square.MinIndex; square <= Square.MaxIndex; square++)
                 {
                     for (var i = Square.MinComponent; i <= Square.MaxComponent; i++)
                     {
-                        var coordinate = square + SquareOffsets2D[direction] * i;
+                        var coordinate = new Square(square).Coordinate + SquareOffsets2D[direction] * i;
 
                         if (IsCoordinateValid(coordinate))
                         {
@@ -224,9 +224,9 @@ namespace Chess
             }
 
             AlignMask = new(Area * Area, allocator);
-            for (var squareA = Square.Min.Index; squareA <= Square.Max.Index; squareA++)
+            for (var squareA = Square.MinIndex; squareA <= Square.MaxIndex; squareA++)
             {
-                for (var squareB = Square.Min.Index; squareB <= Square.Max.Index; squareB++)
+                for (var squareB = Square.MinIndex; squareB <= Square.MaxIndex; squareB++)
                 {
                     var cA = new Square(squareA).Coordinate;
                     var cB = new Square(squareB).Coordinate;
@@ -681,14 +681,16 @@ namespace Chess
             };
         }
 
-        public readonly Bitboard GetPawnAttacks(Bitboard pawns, Color color)
+        public readonly Bitboard GetPawnAttacks(Bitboard pawns, bool isWhite)
         {
-            return color switch
+            if (isWhite)
             {
-                Color.Black => ((pawns >> 7) & ~Bitboard.FileA) | ((pawns << 7) & ~Bitboard.FileH),
-                Color.White => ((pawns << 9) & ~Bitboard.FileA) | ((pawns >> 9) & ~Bitboard.FileH),
-                _ => default
-            };
+                return ((pawns >> 7) & ~Bitboard.FileA) | ((pawns << 7) & ~Bitboard.FileH);
+            }
+            else
+            {
+                return ((pawns << 9) & ~Bitboard.FileA) | ((pawns >> 9) & ~Bitboard.FileH);
+            }
         }
 
         public Bitboard GetSliderAttacks(Square square, Bitboard blockers, bool isOrthogonal)
