@@ -166,6 +166,11 @@ namespace Chess
             return new(left.value * right.value);
         }
 
+        public static Bitboard operator -(Bitboard left, Bitboard right)
+        {
+            return new(left.value - right.value);
+        }
+
         public static explicit operator ulong(Bitboard bitboard)
         {
             return bitboard.value;

@@ -80,8 +80,8 @@ namespace Chess
         public NativeArray<Bitboard> WhitePawnAttacks;
         public NativeArray<Bitboard> BlackPawnAttacks;
 
-        public NativeArray<int2> OrthogonalDirections;
-        public NativeArray<int2> DiagonalDirections;
+        public NativeArray<int2> RookDirections;
+        public NativeArray<int2> BishopDirections;
 
         public Magic Magic;
 
@@ -244,17 +244,17 @@ namespace Chess
                 }
             }
 
-            OrthogonalDirections = new NativeArray<int2>(4, allocator);
-            OrthogonalDirections[0] = new(-1, 0);
-            OrthogonalDirections[1] = new(0, 1);
-            OrthogonalDirections[2] = new(1, 0);
-            OrthogonalDirections[3] = new(0, -1);
+            RookDirections = new NativeArray<int2>(4, allocator);
+            RookDirections[0] = new(-1, 0);
+            RookDirections[1] = new(0, 1);
+            RookDirections[2] = new(1, 0);
+            RookDirections[3] = new(0, -1);
 
-            DiagonalDirections = new NativeArray<int2>(4, allocator);
-            DiagonalDirections[0] = new(-1, -1);
-            DiagonalDirections[1] = new(-1, 1);
-            DiagonalDirections[2] = new(1, 1);
-            DiagonalDirections[3] = new(1, -1);
+            BishopDirections = new NativeArray<int2>(4, allocator);
+            BishopDirections[0] = new(-1, -1);
+            BishopDirections[1] = new(-1, 1);
+            BishopDirections[2] = new(1, 1);
+            BishopDirections[3] = new(1, -1);
 
             KnightMoves = new(Area, allocator);
             KingMoves = new(Area, allocator);
@@ -264,9 +264,7 @@ namespace Chess
             HasCachedInCheckValue = default;
 
             Zobrist = new(allocator);
-
             Magic = new(allocator);
-            Magic.Initialize(this, allocator);
 
             var knightJumps = new NativeArray<int2>(8, Allocator.Temp);
             knightJumps[0] = new(-2, -1);
@@ -605,10 +603,10 @@ namespace Chess
 
             for (var i = 0; i < 4; i++)
             {
-                var orthogonalFile = file + OrthogonalDirections[i].x;
-                var orthogonalRank = rank + OrthogonalDirections[i].y;
-                var diagonalFile = file + DiagonalDirections[i].x;
-                var diagonalRank = rank + DiagonalDirections[i].y;
+                var orthogonalFile = file + RookDirections[i].x;
+                var orthogonalRank = rank + RookDirections[i].y;
+                var diagonalFile = file + BishopDirections[i].x;
+                var diagonalRank = rank + BishopDirections[i].y;
 
                 if (IsCoordinateValid(orthogonalFile, orthogonalRank))
                 {
@@ -700,29 +698,22 @@ namespace Chess
 
         public Bitboard GetRookMask(Square square)
         {
-            return Magic.OrthogonalMasks[square.Index];
+            return Magic.GetRookMask(square);
         }
 
         public Bitboard GetBishopMask(Square square)
         {
-            return Magic.DiagonalMasks[square.Index];
+            return Magic.GetBishopMask(square);
         }
 
         public Bitboard GetRookAttacks(Square square, Bitboard blockers)
         {
-            var key = ((blockers & Magic.OrthogonalMasks[square.Index]) * new Bitboard(Magic.OrthogonalMagics[square.Index])) >> Magic.OrthogonalShifts[square.Index];
-            return Magic.OrthogonalAttacks[square.Index][(int)(ulong)key];
+            return Magic.GetRookAttacks(square, blockers);
         }
 
         public Bitboard GetBishopAttacks(Square square, Bitboard blockers)
         {
-            var key = ((blockers & Magic.DiagonalMasks[square.Index]) * new Bitboard(Magic.DiagonalMagics[square.Index])) >> Magic.DiagonalShifts[square.Index];
-            return Magic.DiagonalAttacks[square.Index][(int)(ulong)key];
-        }
-
-        public Bitboard GetQueenAttacks(Square square, Bitboard blockers)
-        {
-            return GetRookAttacks(square, blockers) | GetBishopAttacks(square, blockers);
+            return Magic.GetBishopAttacks(square, blockers);
         }
 
         public int GetBorderDistance(Square square, Direction direction)
@@ -832,8 +823,8 @@ namespace Chess
             SquareOffsets.Dispose();
             SquareOffsets2D.Dispose();
 
-            OrthogonalDirections.Dispose();
-            DiagonalDirections.Dispose();
+            RookDirections.Dispose();
+            BishopDirections.Dispose();
 
             Magic.Dispose();
         }
