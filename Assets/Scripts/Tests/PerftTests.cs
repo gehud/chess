@@ -1,5 +1,6 @@
 ﻿using NUnit.Framework;
 using Unity.Collections;
+using UnityEngine;
 
 namespace Chess.Tests
 {
@@ -52,12 +53,20 @@ namespace Chess.Tests
             board.Dispose();
         }
 
-        private static int Search(in Board board, int depth)
+        private static int Search(in Board board, int depth, bool debug = true)
         {
             board.GenerateMoves();
 
             if (depth == 1)
             {
+                if (debug)
+                {
+                    for (var i = 0; i < board.Moves.Length; i++)
+                    {
+                        Debug.Log($"{board.Moves[i]}: 1");
+                    }
+                }
+
                 return board.Moves.Length;
             }
 
@@ -68,7 +77,13 @@ namespace Chess.Tests
             for (var i = 0; i < moves.Length; i++)
             {
                 board.MakeMove(moves[i]);
-                var innerCount = Search(board, depth - 1);
+                var innerCount = Search(board, depth - 1, false);
+                
+                if (debug)
+                {
+                    Debug.Log($"{moves[i]}: {innerCount}");
+                }
+
                 count += innerCount;
 
                 board.UnmakeMove(moves[i]);

@@ -458,7 +458,7 @@ namespace Chess
             {
                 var epFileIndex = Board.State.EnPassantFile - 1;
                 var epRankIndex = isWhiteAllied ? 5 : 2;
-                var targetSquare = new Square(epRankIndex * 8 + epFileIndex);
+                var targetSquare = new Square(epFileIndex, epRankIndex);
                 var capturedPawnSquare = targetSquare - pushOffset;
 
                 if (checkRayMask.Contains(capturedPawnSquare))

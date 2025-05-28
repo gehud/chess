@@ -401,7 +401,7 @@ namespace Chess
 
             if ((move.Flags & MoveFlags.DoublePawnMove) != MoveFlags.None)
             {
-                var file = from.File;
+                var file = from.File + 1;
                 newEnPassantFile = file;
                 newZobristKey ^= Zobrist.EnPassantFile[file];
             }
@@ -685,11 +685,11 @@ namespace Chess
         {
             if (isWhite)
             {
-                return ((pawns >> 7) & ~Bitboard.FileA) | ((pawns << 7) & ~Bitboard.FileH);
+                return ((pawns << 9) & ~Bitboard.FileA) | ((pawns << 7) & ~Bitboard.FileH);
             }
             else
             {
-                return ((pawns << 9) & ~Bitboard.FileA) | ((pawns >> 9) & ~Bitboard.FileH);
+                return ((pawns >> 7) & ~Bitboard.FileA) | ((pawns >> 9) & ~Bitboard.FileH);
             }
         }
 
