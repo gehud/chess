@@ -484,7 +484,7 @@ namespace Chess
         {
             var enemyOrtho = Board.EnemyOrthogonalSliders;
 
-            while (!enemyOrtho.IsEmpty)
+            if (!enemyOrtho.IsEmpty)
             {
                 var maskedBlockers = allPieces ^ Bitboard.Empty.With(capturedPawnSquare).With(startSquare).With(targetSquare);
                 var rookAttacks = Board.GetRookAttacks(alliedKingSquare, maskedBlockers);
