@@ -48,12 +48,12 @@ namespace Chess.Tests
             var board = new Board(Allocator.Temp);
 
             board.Load(fen);
-            Assert.AreEqual(nodes, Search(board, depth));
+            Assert.AreEqual(nodes, Search(ref board, depth));
 
             board.Dispose();
         }
 
-        private static int Search(in Board board, int depth, bool debug = true)
+        private static int Search(ref Board board, int depth, bool debug = true)
         {
             board.GenerateMoves();
 
@@ -70,14 +70,15 @@ namespace Chess.Tests
                 return board.Moves.Length;
             }
 
-            var moves = new NativeList<Move>(Allocator.Persistent);
+            var moves = new NativeList<Move>(Allocator.Temp);
             moves.CopyFrom(board.Moves);
+
             var count = 0;
 
             for (var i = 0; i < moves.Length; i++)
             {
                 board.MakeMove(moves[i]);
-                var innerCount = Search(board, depth - 1, false);
+                var innerCount = Search(ref board, depth - 1, false);
                 
                 if (debug)
                 {
@@ -86,10 +87,11 @@ namespace Chess.Tests
 
                 count += innerCount;
 
-                board.UnmakeMove(moves[i]);
+                board.UnmakeLastMove();
             }
 
             moves.Dispose();
+
             return count;
         }
     }

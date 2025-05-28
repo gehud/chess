@@ -96,7 +96,7 @@ namespace Chess
             return BishopMasks[square.Index];
         }
 
-        public Bitboard GetRookAttacks(Square square, Bitboard blockers)
+        public readonly Bitboard GetRookAttacks(Square square, Bitboard blockers)
         {
 #if USE_MAGIC
             var mask = RookMasks[square.Index];
@@ -109,7 +109,7 @@ namespace Chess
 #endif
         }
 
-        public Bitboard GetBishopAttacks(Square square, Bitboard blockers)
+        public readonly Bitboard GetBishopAttacks(Square square, Bitboard blockers)
         {
 #if USE_MAGIC
             var mask = BishopMasks[square.Index];
@@ -122,7 +122,7 @@ namespace Chess
 #endif
         }
 
-        public Bitboard GetQueenAttacks(Square square, Bitboard blockers)
+        public readonly Bitboard GetQueenAttacks(Square square, Bitboard blockers)
         {
             return GetRookAttacks(square, blockers) | GetBishopAttacks(square, blockers);
         }

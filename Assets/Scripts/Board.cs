@@ -2,7 +2,6 @@
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
-using UnityEngine;
 
 namespace Chess
 {
@@ -491,41 +490,42 @@ namespace Chess
 
             var undoingWhiteMove = IsWhiteAllied;
 
-            var movedFrom = move.From;
-            var movedTo = move.To;
-            var moveFlag = move.Flags;
+            var from = move.From;
+            var to = move.To;
+            var flags = move.Flags;
 
-            var undoingEnPassant = (moveFlag & MoveFlags.EnPassant) != MoveFlags.None;
-            var undoingPromotion = (moveFlag & MoveFlags.Promotion) != MoveFlags.None;
+            var undoingEnPassant = (flags & MoveFlags.EnPassant) != MoveFlags.None;
+            var undoingPromotion = (flags & MoveFlags.Promotion) != MoveFlags.None;
             var undoingCapture = State.CapturedFigure != Figure.None;
 
-            var movedPiece = undoingPromotion ? new Piece(Figure.Pawn, AlliedColor) : this[movedTo];
-            var movedPieceType = movedPiece.Figure;
+            var movedPiece = undoingPromotion ? new Piece(Figure.Pawn, AlliedColor) : this[to];
+            var movedFigure = movedPiece.Figure;
             var capturedPieceType = State.CapturedFigure;
 
             if (undoingPromotion)
             {
-                var promotedPiece = this[movedTo];
+                var promotedPiece = this[to];
                 var pawnPiece = new Piece(Figure.Pawn, AlliedColor);
                 TotalPieceCountWithoutPawnsAndKings--;
 
-                AllPieces[promotedPiece.Index].Remove(movedTo);
-                AllPieces[movedPiece.Index].Add(movedTo);
-                PieceBitboards[promotedPiece.Index] ^= movedTo;
-                PieceBitboards[pawnPiece.Index] ^= movedTo;
+                AllPieces[promotedPiece.Index].Remove(to);
+                AllPieces[movedPiece.Index].Add(to);
+                PieceBitboards[promotedPiece.Index] ^= to;
+                PieceBitboards[pawnPiece.Index] ^= to;
             }
 
-            MovePiece(movedPiece, movedTo, movedFrom);
+            MovePiece(movedPiece, to, from);
 
             if (undoingCapture)
             {
-                var captureSquare = movedTo;
+                var captureSquare = to;
                 var capturedPiece = new Piece(capturedPieceType, EnemyColor);
 
                 if (undoingEnPassant)
                 {
-                    captureSquare = movedTo + (undoingWhiteMove ? -8 : 8);
+                    captureSquare = to + (undoingWhiteMove ? -8 : 8);
                 }
+
                 if (capturedPieceType != Figure.Pawn)
                 {
                     TotalPieceCountWithoutPawnsAndKings++;
@@ -537,16 +537,16 @@ namespace Chess
                 this[captureSquare] = capturedPiece;
             }
 
-            if (movedPieceType == Figure.King)
+            if (movedFigure == Figure.King)
             {
-                Kings[AlliedColorIndex] = movedFrom;
+                Kings[AlliedColorIndex] = from;
 
-                if ((moveFlag & MoveFlags.Castling) != MoveFlags.None)
+                if ((flags & MoveFlags.Castling) != MoveFlags.None)
                 {
                     var rookPiece = new Piece(Figure.Rook, AlliedColor);
-                    var kingside = movedTo == Square.G1 || movedTo == Square.G8;
-                    var rookSquareBeforeCastling = kingside ? movedTo + 1 : movedTo - 2;
-                    var rookSquareAfterCastling = kingside ? movedTo - 1 : movedTo + 1;
+                    var kingside = to == Square.G1 || to == Square.G8;
+                    var rookSquareBeforeCastling = kingside ? to + 1 : to - 2;
+                    var rookSquareAfterCastling = kingside ? to - 1 : to + 1;
 
                     PieceBitboards[rookPiece.Index] ^= Bitboard.Empty.With(rookSquareAfterCastling).With(rookSquareBeforeCastling);
                     ColorBitboards[AlliedColorIndex] ^= Bitboard.Empty.With(rookSquareAfterCastling).With(rookSquareBeforeCastling);
@@ -576,6 +576,14 @@ namespace Chess
             State = StateHistory[^1];
             PlyCount--;
             HasCachedInCheckValue = false;
+        }
+
+        public void UnmakeLastMove()
+        {
+            if (AllMoves.Length > 0)
+            {
+                UnmakeMove(AllMoves[^1]);
+            }
         }
 
         public void Load(string fen)

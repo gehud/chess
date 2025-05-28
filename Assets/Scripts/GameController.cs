@@ -36,6 +36,13 @@ namespace Chess
             painter.Repaint(board);
         }
 
+        private void OnUndo()
+        {
+            board.UnmakeLastMove();
+            board.GenerateMoves();
+            painter.Repaint(board);
+        }
+
         private void Awake()
         {
             board = new Board(Allocator.Persistent);
@@ -53,6 +60,7 @@ namespace Chess
             painter.Repaint(board);
 
             controls = new();
+            controls.Player.Undo.performed += (ctx) => OnUndo();
         }
 
         private void OnEnable()
