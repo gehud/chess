@@ -1,6 +1,5 @@
 ﻿using System;
 using Unity.Collections;
-using Unity.Mathematics;
 
 namespace Chess
 {
@@ -8,6 +7,8 @@ namespace Chess
     {
         public NativeArray<ulong> RookMagics;
         public NativeArray<ulong> BishopMagics;
+        public NativeArray<int> RookShifts;
+        public NativeArray<int> BishopShifts;
         public NativeArray<Bitboard> RookMasks;
         public NativeArray<Bitboard> BishopMasks;
         public NativeArray<NativeArray<Bitboard>> RookAttacks;
@@ -15,49 +16,85 @@ namespace Chess
 
         public Magic(Allocator allocator)
         {
-            RookMagics = new(new ulong[]
-            {
-                0x0080001020400080UL, 0x0040001000200040UL, 0x0080080010002000UL, 0x0080040008001000UL,
-                0x0080020004000800UL, 0x0080010002000400UL, 0x0080008001000200UL, 0x0080000400800100UL,
-                0x0000800020400080UL, 0x0000400020005000UL, 0x0000801000200040UL, 0x0000800800100020UL,
-                0x0000800400080010UL, 0x0000800200040008UL, 0x0000800100020004UL, 0x0000800040008002UL,
-                0x0000208000400080UL, 0x0000404000201000UL, 0x0000808010002000UL, 0x0000808008001000UL,
-                0x0000808004000800UL, 0x0000808002000400UL, 0x0000808001000200UL, 0x0000808000800100UL,
-                0x0000204000400080UL, 0x0000202000804000UL, 0x0000401000802000UL, 0x0000400800801000UL,
-                0x0000400400800800UL, 0x0000400200800400UL, 0x0000400100800200UL, 0x0000400080800100UL,
-                0x0000200040004080UL, 0x0000400020004040UL, 0x0000800010008020UL, 0x0000800008008010UL,
-                0x0000800004008008UL, 0x0000800002004004UL, 0x0000800001002002UL, 0x0000800000801001UL,
-                0x0000200000400040UL, 0x0000400000200080UL, 0x0000800000100080UL, 0x0000800000080080UL,
-                0x0000800000040080UL, 0x0000800000020040UL, 0x0000800000010020UL, 0x0000800000008010UL,
-                0x0000200000800040UL, 0x0000400000400080UL, 0x0000800000200080UL, 0x0000800000100080UL,
-                0x0000800000080080UL, 0x0000800000040080UL, 0x0000800000020040UL, 0x0000800000010020UL,
-                0x0000204000008000UL, 0x0000402000004000UL, 0x0000801000002000UL, 0x0000800800001000UL,
-                0x0000800400000800UL, 0x0000800200000400UL, 0x0000800100000200UL, 0x0000800080000100UL,
-                0x0000200040000080UL, 0x0000400020000040UL, 0x0000800010000020UL, 0x0000800008000010UL,
-                0x0000800004000008UL, 0x0000800002000004UL, 0x0000800001000002UL, 0x0000800000800001UL
-            }, allocator);
+            RookShifts = new
+            (
+                new int[Board.Area]
+                {
+                    52, 52, 52, 52, 52, 52, 52, 52,
+                    53, 53, 53, 54, 53, 53, 54, 53,
+                    53, 54, 54, 54, 53, 53, 54, 53,
+                    53, 54, 53, 53, 54, 54, 54, 53,
+                    52, 54, 53, 53, 53, 53, 54, 53,
+                    52, 53, 54, 54, 53, 53, 54, 53,
+                    53, 54, 54, 54, 53, 53, 54, 53,
+                    52, 53, 53, 53, 53, 53, 53, 52
+                },
+                allocator
+            );
 
-            BishopMagics = new(new ulong[]
-            {
-                0x0002020202020200UL, 0x0002020202020000UL, 0x0004010202000000UL, 0x0004040080000000UL,
-                0x0001104000000000UL, 0x0000821040000000UL, 0x0000410410400000UL, 0x0000104104104000UL,
-                0x0000040404040400UL, 0x0000020202020200UL, 0x0000040102020000UL, 0x0000040400800000UL,
-                0x0000011040000000UL, 0x0000008210400000UL, 0x0000004104104000UL, 0x0000002082082000UL,
-                0x0004000808080800UL, 0x0002000404040400UL, 0x0001000202020200UL, 0x0000800802004000UL,
-                0x0000800400A00000UL, 0x0000200100884000UL, 0x0000400082082000UL, 0x0000200041041000UL,
-                0x0002080010101000UL, 0x0001040008080800UL, 0x0000208004010400UL, 0x0000404004010200UL,
-                0x0000840000802000UL, 0x0000404002011000UL, 0x0000808001041000UL, 0x0000404000820800UL,
-                0x0001041000202000UL, 0x0000820800101000UL, 0x0000104400080800UL, 0x0000020080080080UL,
-                0x0000404040040100UL, 0x0000808100020100UL, 0x0001010100020800UL, 0x0000808080010400UL,
-                0x0000820820004000UL, 0x0000410410002000UL, 0x0000082088001000UL, 0x0000002011000800UL,
-                0x0000080100400400UL, 0x0000010100800200UL, 0x0000040408000100UL, 0x0000040404000200UL,
-                0x0000020801001000UL, 0x0004000208080800UL, 0x0002020040400400UL, 0x0001010020200200UL,
-                0x0000808008009000UL, 0x0000408004011000UL, 0x0000204008021000UL, 0x0000102004010800UL,
-                0x0000081002008400UL, 0x0000040801008200UL, 0x0000020400804100UL, 0x0000010200404080UL,
-                0x0000008002020200UL, 0x0000040001010100UL, 0x0000020000808080UL, 0x0000010000804040UL,
-                0x0000008000802020UL, 0x0000004000801010UL, 0x0000002000800808UL, 0x0000001000800404UL,
-                0x0000000800800202UL, 0x0000000400800101UL, 0x0000040200010101UL, 0x0000020100008080UL
-            }, allocator);
+            BishopShifts = new
+            (
+                new int[Board.Area]
+                {
+                    58, 60, 59, 59, 59, 59, 60, 58,
+                    60, 59, 59, 59, 59, 59, 59, 60,
+                    59, 59, 57, 57, 57, 57, 59, 59,
+                    59, 59, 57, 55, 55, 57, 59, 59,
+                    59, 59, 57, 55, 55, 57, 59, 59,
+                    59, 59, 57, 57, 57, 57, 59, 59,
+                    60, 60, 59, 59, 59, 59, 60, 60,
+                    58, 60, 59, 59, 59, 59, 59, 58
+                },
+                allocator
+            );
+
+            RookMagics = new
+            (
+                new ulong[Board.Area]
+                {
+                    468374916371625120, 18428729537625841661, 2531023729696186408, 6093370314119450896,
+                    13830552789156493815, 16134110446239088507, 12677615322350354425, 5404321144167858432,
+                    2111097758984580, 18428720740584907710, 17293734603602787839, 4938760079889530922,
+                    7699325603589095390, 9078693890218258431, 578149610753690728, 9496543503900033792,
+                    1155209038552629657, 9224076274589515780, 1835781998207181184, 509120063316431138,
+                    16634043024132535807, 18446673631917146111, 9623686630121410312, 4648737361302392899,
+                    738591182849868645, 1732936432546219272, 2400543327507449856, 5188164365601475096,
+                    10414575345181196316, 1162492212166789136, 9396848738060210946, 622413200109881612,
+                    7998357718131801918, 7719627227008073923, 16181433497662382080, 18441958655457754079,
+                    1267153596645440, 18446726464209379263, 1214021438038606600, 4650128814733526084,
+                    9656144899867951104, 18444421868610287615, 3695311799139303489, 10597006226145476632,
+                    18436046904206950398, 18446726472933277663, 3458977943764860944, 39125045590687766,
+                    9227453435446560384, 6476955465732358656, 1270314852531077632, 2882448553461416064,
+                    11547238928203796481, 1856618300822323264, 2573991788166144, 4936544992551831040,
+                    13690941749405253631, 15852669863439351807, 18302628748190527413, 12682135449552027479,
+                    13830554446930287982, 18302628782487371519, 7924083509981736956, 4734295326018586370
+                },
+                allocator
+            );
+
+            BishopMagics = new
+            (
+                new ulong[Board.Area]
+                {
+                    16509839532542417919, 14391803910955204223, 1848771770702627364, 347925068195328958,
+                    5189277761285652493, 3750937732777063343, 18429848470517967340, 17870072066711748607,
+                    16715520087474960373, 2459353627279607168, 7061705824611107232, 8089129053103260512,
+                    7414579821471224013, 9520647030890121554, 17142940634164625405, 9187037984654475102,
+                    4933695867036173873, 3035992416931960321, 15052160563071165696, 5876081268917084809,
+                    1153484746652717320, 6365855841584713735, 2463646859659644933, 1453259901463176960,
+                    9808859429721908488, 2829141021535244552, 576619101540319252, 5804014844877275314,
+                    4774660099383771136, 328785038479458864, 2360590652863023124, 569550314443282,
+                    17563974527758635567, 11698101887533589556, 5764964460729992192, 6953579832080335136,
+                    1318441160687747328, 8090717009753444376, 16751172641200572929, 5558033503209157252,
+                    17100156536247493656, 7899286223048400564, 4845135427956654145, 2368485888099072,
+                    2399033289953272320, 6976678428284034058, 3134241565013966284, 8661609558376259840,
+                    17275805361393991679, 15391050065516657151, 11529206229534274423, 9876416274250600448,
+                    16432792402597134585, 11975705497012863580, 11457135419348969979, 9763749252098620046,
+                    16960553411078512574, 15563877356819111679, 14994736884583272463, 9441297368950544394,
+                    14537646123432199168, 9888547162215157388, 18140215579194907366, 18374682062228545019
+                },
+                allocator
+            );
 
             RookMasks = new(Board.Area, allocator);
             BishopMasks = new(Board.Area, allocator);
@@ -72,17 +109,9 @@ namespace Chess
             BishopAttacks = new(Board.Area, allocator);
             for (var i = Square.Min.Index; i <= Square.Max.Index; i++)
             {
-                var rookMask = RookMasks[i];
-                var rookBits = math.countbits((ulong)rookMask);
-                RookAttacks[i] = new(1 << rookBits, allocator);
-
-                var bishopMask = BishopMasks[i];
-                var bishopBits = math.countbits((ulong)bishopMask);
-                BishopAttacks[i] = new(1 << bishopBits, allocator);
-
                 var square = new Square(i);
-                InitializeAttackTable(square, true);
-                InitializeAttackTable(square, false);
+                RookAttacks[i] = InitializeAttackTable(square, true, allocator);
+                BishopAttacks[i] = InitializeAttackTable(square, false, allocator);
             }
         }
 
@@ -98,28 +127,14 @@ namespace Chess
 
         public readonly Bitboard GetRookAttacks(Square square, Bitboard blockers)
         {
-#if USE_MAGIC
-            var mask = RookMasks[square.Index];
-            var magic = RookMagics[square.Index];
-            var bits = math.countbits((ulong)mask);
-            var key = ((blockers & mask) * (Bitboard)magic) >> (Board.Area - bits);
+            var key = ((blockers & RookMasks[square.Index]) * (Bitboard)RookMagics[square.Index]) >> RookShifts[square.Index];
             return RookAttacks[square.Index][(int)(ulong)key];
-#else
-            return GenerateRookAttacks(square, blockers);
-#endif
         }
 
         public readonly Bitboard GetBishopAttacks(Square square, Bitboard blockers)
         {
-#if USE_MAGIC
-            var mask = BishopMasks[square.Index];
-            var magic = BishopMagics[square.Index];
-            var bits = math.countbits((ulong)mask);
-            var key = ((blockers & mask) * (Bitboard)magic) >> (Board.Area - bits);
+            var key = ((blockers & BishopMasks[square.Index]) * (Bitboard)BishopMagics[square.Index]) >> BishopShifts[square.Index];
             return BishopAttacks[square.Index][(int)(ulong)key];
-#else
-            return GenerateBishopAttacks(square, blockers);
-#endif
         }
 
         public readonly Bitboard GetQueenAttacks(Square square, Bitboard blockers)
@@ -127,18 +142,22 @@ namespace Chess
             return GetRookAttacks(square, blockers) | GetBishopAttacks(square, blockers);
         }
 
-        private void InitializeAttackTable(Square square, bool isRook)
+        private NativeArray<Bitboard> InitializeAttackTable(Square square, bool isRook, Allocator allocator)
         {
+            var shift = isRook ? RookShifts[square.Index] : BishopShifts[square.Index];
+            var bits = Board.Area - shift;
+            var size = 1 << bits;
+
             var mask = isRook ? RookMasks[square.Index] : BishopMasks[square.Index];
             var magic = isRook ? RookMagics[square.Index] : BishopMagics[square.Index];
-            var bits = math.countbits((ulong)mask);
-            var table = isRook ? RookAttacks[square.Index] : BishopAttacks[square.Index];
+
+            var table = new NativeArray<Bitboard>(size, allocator);
 
             var blockers = Bitboard.Empty;
 
             do
             {
-                var key = ((ulong)blockers * magic) >> (Board.Area - bits);
+                var key = ((ulong)blockers * magic) >> shift;
                 var attacks = isRook ? GenerateRookAttacks(square, blockers) :
                     GenerateBishopAttacks(square, blockers);
                 table[(int)key] = attacks;
@@ -147,6 +166,8 @@ namespace Chess
                 blockers = (blockers - mask) & mask;
             }
             while (!blockers.IsEmpty);
+
+            return table;
         }
 
         public static Bitboard GenerateRookAttacks(Square square, Bitboard blockers)
@@ -269,6 +290,11 @@ namespace Chess
 
         public void Dispose()
         {
+            RookShifts.Dispose();
+            BishopShifts.Dispose();
+            RookMagics.Dispose();
+            BishopMagics.Dispose();
+
             RookMasks.Dispose();
             BishopMasks.Dispose();
 
@@ -285,9 +311,6 @@ namespace Chess
             }
 
             BishopAttacks.Dispose();
-
-            RookMagics.Dispose();
-            BishopMagics.Dispose();
         }
     }
 }

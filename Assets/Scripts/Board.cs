@@ -300,16 +300,17 @@ namespace Chess
 
         public void MakeMove(Move move, bool inSearch = false)
         {
-            // Get info about move
             var from = move.From;
             var to = move.To;
-            var isPromotion = (move.Flags & MoveFlags.Promotion) != MoveFlags.None;
-            var isEnPassant = (move.Flags & MoveFlags.EnPassant) != MoveFlags.None;
+            var flags = move.Flags;
+
+            var isPromotion = (flags & MoveFlags.Promotion) != MoveFlags.None;
+            var isEnPassant = (flags & MoveFlags.EnPassant) != MoveFlags.None;
 
             var movedPiece = this[from];
-            var movedPieceType = movedPiece.Figure;
+            var movedFigure = movedPiece.Figure;
             var capturedPiece = isEnPassant ? new Piece(Figure.Pawn, EnemyColor) : this[to];
-            var capturedPieceType = capturedPiece.Figure;
+            var capturedFigure = capturedPiece.Figure;
 
             var prevCastleState = State.CastlingRights;
             var prevEnPassantFile = State.EnPassantFile;
@@ -328,7 +329,8 @@ namespace Chess
                     captureSquare = to + (IsWhiteAllied ? -8 : 8);
                     this[captureSquare] = Piece.Empty;
                 }
-                if (capturedPieceType != Figure.Pawn)
+
+                if (capturedFigure != Figure.Pawn)
                 {
                     TotalPieceCountWithoutPawnsAndKings--;
                 }
@@ -340,12 +342,12 @@ namespace Chess
                 newZobristKey ^= Zobrist.Pieces[capturedPiece.Index * Area + captureSquare.Index];
             }
 
-            if (movedPieceType == Figure.King)
+            if (movedFigure == Figure.King)
             {
                 Kings[AlliedColorIndex] = to;
                 newCastlingRights &= IsWhiteAllied ? 0b1100 : 0b0011;
 
-                if ((move.Flags & MoveFlags.Castling) != MoveFlags.None)
+                if ((flags & MoveFlags.Castling) != MoveFlags.None)
                 {
                     var rookPiece = new Piece(Figure.Rook, AlliedColor);
                     var kingside = to == Square.G1 || to == Square.G8;
@@ -368,26 +370,26 @@ namespace Chess
             {
                 TotalPieceCountWithoutPawnsAndKings++;
 
-                var promotionPieceType = Figure.None;
+                var promotionFigure = Figure.None;
 
-                if ((move.Flags & MoveFlags.QueenPromotion) != MoveFlags.None)
+                if ((flags & MoveFlags.QueenPromotion) != MoveFlags.None)
                 {
-                    promotionPieceType = Figure.Queen;
+                    promotionFigure = Figure.Queen;
                 }
-                else if ((move.Flags & MoveFlags.RookPromotion) != MoveFlags.None)
+                else if ((flags & MoveFlags.RookPromotion) != MoveFlags.None)
                 {
-                    promotionPieceType = Figure.Rook;
+                    promotionFigure = Figure.Rook;
                 }
-                else if ((move.Flags & MoveFlags.KnightPromotion) != MoveFlags.None)
+                else if ((flags & MoveFlags.KnightPromotion) != MoveFlags.None)
                 {
-                    promotionPieceType = Figure.Knight;
+                    promotionFigure = Figure.Knight;
                 }
-                else if ((move.Flags & MoveFlags.BishopPromotion) != MoveFlags.None)
+                else if ((flags & MoveFlags.BishopPromotion) != MoveFlags.None)
                 {
-                    promotionPieceType = Figure.Bishop;
+                    promotionFigure = Figure.Bishop;
                 }
 
-                var promotionPiece = new Piece(promotionPieceType, AlliedColor);
+                var promotionPiece = new Piece(promotionFigure, AlliedColor);
 
                 PieceBitboards[movedPiece.Index] ^= to;
                 PieceBitboards[promotionPiece.Index] ^= to;
@@ -398,7 +400,7 @@ namespace Chess
                 this[to] = promotionPiece;
             }
 
-            if ((move.Flags & MoveFlags.DoublePawnMove) != MoveFlags.None)
+            if ((flags & MoveFlags.DoublePawnMove) != MoveFlags.None)
             {
                 var file = from.File + 1;
                 newEnPassantFile = file;
@@ -444,7 +446,7 @@ namespace Chess
             AllPiecesBitboard = ColorBitboards[AlliedColorIndex] | ColorBitboards[EnemyColorIndex];
             UpdateSliderBitboards();
 
-            if (movedPieceType == Figure.Pawn || capturedPieceType != Figure.None)
+            if (movedFigure == Figure.Pawn || capturedFigure != Figure.None)
             {
                 if (!inSearch)
                 {
@@ -454,7 +456,7 @@ namespace Chess
                 newFiftyMoveCounter = 0;
             }
 
-            State.CapturedFigure = capturedPieceType;
+            State.CapturedFigure = capturedFigure;
             State.EnPassantFile = newEnPassantFile;
             State.CastlingRights = newCastlingRights;
             State.FiftyMoveCounter = newFiftyMoveCounter;

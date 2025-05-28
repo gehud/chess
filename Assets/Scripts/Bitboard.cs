@@ -30,31 +30,31 @@ namespace Chess
         public static Bitboard WhiteQueensideMask => WhiteQueensideMask2 | Empty.With(Square.B1);
         public static Bitboard BlackQueensideMask => BlackQueensideMask2 | Empty.With(Square.B8);
 
-        public readonly bool IsEmpty => value == 0ul;
+        public readonly bool IsEmpty => Value == 0ul;
 
-        private ulong value;
+        public ulong Value;
 
         public Bitboard(ulong value)
         {
-            this.value = value;
+            this.Value = value;
         }
 
         public Square Pop()
         {
-            var i = math.tzcnt(value);
-            value &= value - 1ul;
+            var i = math.tzcnt(Value);
+            Value &= Value - 1ul;
             return new Square(i);
         }
 
-        public readonly Bitboard Shifted(int shift) => shift > 0 ? new Bitboard(value << shift) : new Bitboard(value >> -shift);
+        public readonly Bitboard Shifted(int shift) => shift > 0 ? new Bitboard(Value << shift) : new Bitboard(Value >> -shift);
 
-        public readonly bool Contains(Square square) => (value & (1ul << square.Index)) != 0;
+        public readonly bool Contains(Square square) => (Value & (1ul << square.Index)) != 0;
 
         public readonly bool Contains(int file, int rank) => Contains(new Square(file, rank));
 
         public readonly bool Contains(SquareName name) => Contains(new Square(name));
 
-        public void Include(Square square) => value |= 1ul << square.Index;
+        public void Include(Square square) => Value |= 1ul << square.Index;
 
         public void Include(int file, int rank) => Include(new Square(file, rank));
 
@@ -67,7 +67,7 @@ namespace Chess
 
         public readonly Bitboard With(SquareName name) => With(new Square(name));
 
-        public void Exclude(Square square) => value &= ~(1ul << square.Index);
+        public void Exclude(Square square) => Value &= ~(1ul << square.Index);
 
         public void Exclude(int file, int rank) => Exclude(new Square(file, rank));
 
@@ -78,7 +78,7 @@ namespace Chess
             return without;
         }
 
-        public void Toggle(Square square) => value ^= 1ul << square.Index;
+        public void Toggle(Square square) => Value ^= 1ul << square.Index;
 
         public void Toggle(int file, int rank) => Toggle(new Square(file, rank));
 
@@ -93,7 +93,7 @@ namespace Chess
 
         public readonly bool Equals(Bitboard other)
         {
-            return value == other.value;
+            return Value == other.Value;
         }
 
         public override readonly bool Equals(object other)
@@ -108,7 +108,7 @@ namespace Chess
 
         public override readonly int GetHashCode()
         {
-            return HashCode.Combine(value);
+            return HashCode.Combine(Value);
         }
 
         public static bool operator ==(Bitboard left, Bitboard right)
@@ -123,7 +123,7 @@ namespace Chess
 
         public static Bitboard operator |(Bitboard left, Bitboard right)
         {
-            return new(left.value | right.value);
+            return new(left.Value | right.Value);
         }
 
         public static Bitboard operator |(Bitboard left, Square right)
@@ -133,12 +133,12 @@ namespace Chess
 
         public static Bitboard operator &(Bitboard left, Bitboard right)
         {
-            return new(left.value & right.value);
+            return new(left.Value & right.Value);
         }
 
         public static Bitboard operator ^(Bitboard left, Bitboard right)
         {
-            return new(left.value ^ right.value);
+            return new(left.Value ^ right.Value);
         }
 
         public static Bitboard operator ^(Bitboard left, Square right)
@@ -148,32 +148,32 @@ namespace Chess
 
         public static Bitboard operator ~(Bitboard bitboard)
         {
-            return new(~bitboard.value);
+            return new(~bitboard.Value);
         }
 
         public static Bitboard operator >>(Bitboard bitboard, int shift)
         {
-            return new(bitboard.value >> shift);
+            return new(bitboard.Value >> shift);
         }
 
         public static Bitboard operator <<(Bitboard bitboard, int shift)
         {
-            return new(bitboard.value << shift);
+            return new(bitboard.Value << shift);
         }
 
         public static Bitboard operator *(Bitboard left, Bitboard right)
         {
-            return new(left.value * right.value);
+            return new(left.Value * right.Value);
         }
 
         public static Bitboard operator -(Bitboard left, Bitboard right)
         {
-            return new(left.value - right.value);
+            return new(left.Value - right.Value);
         }
 
         public static explicit operator ulong(Bitboard bitboard)
         {
-            return bitboard.value;
+            return bitboard.Value;
         }
 
         public static explicit operator Bitboard(ulong value)
