@@ -157,10 +157,10 @@ namespace Chess
             var startDirection = Direction.North;
             var endDirection = Direction.SouthWest;
 
-            if (Board.Queens[(int)Board.EnemyColor].Count == 0)
+            if (Board.Queens[(int)Board.EnemyColor].Length == 0)
             {
-                startDirection = (Board.Rooks[(int)Board.EnemyColor].Count > 0) ? Direction.North : Direction.East;
-                endDirection = (Board.Bishops[(int)Board.EnemyColor].Count > 0) ? Direction.SouthWest : Direction.East;
+                startDirection = (Board.Rooks[(int)Board.EnemyColor].Length > 0) ? Direction.North : Direction.East;
+                endDirection = (Board.Bishops[(int)Board.EnemyColor].Length > 0) ? Direction.SouthWest : Direction.East;
             }
 
             for (var direction = startDirection; direction <= endDirection; direction++)

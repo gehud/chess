@@ -38,32 +38,32 @@ namespace Chess
 
         public int TotalPieceCountWithoutPawnsAndKings;
 
-        public NativeArray<NativeHashSet<Square>> Rooks;
-        public NativeArray<NativeHashSet<Square>> Bishops;
-        public NativeArray<NativeHashSet<Square>> Queens;
-        public NativeArray<NativeHashSet<Square>> Knights;
-        public NativeArray<NativeHashSet<Square>> Pawns;
+        public NativeArray<PieceSet> Rooks;
+        public NativeArray<PieceSet> Bishops;
+        public NativeArray<PieceSet> Queens;
+        public NativeArray<PieceSet> Knights;
+        public NativeArray<PieceSet> Pawns;
 
         public bool IsWhiteAllied;
-        public Color AlliedColor => IsWhiteAllied ? Color.White : Color.Black;
-        public Color EnemyColor => IsWhiteAllied ? Color.Black : Color.White;
-        public int AlliedColorIndex => IsWhiteAllied ? (int)Color.White : (int)Color.Black;
-        public int EnemyColorIndex => IsWhiteAllied ? (int)Color.Black : (int)Color.White;
+        public readonly Color AlliedColor => IsWhiteAllied ? Color.White : Color.Black;
+        public readonly Color EnemyColor => IsWhiteAllied ? Color.Black : Color.White;
+        public readonly int AlliedColorIndex => IsWhiteAllied ? (int)Color.White : (int)Color.Black;
+        public readonly int EnemyColorIndex => IsWhiteAllied ? (int)Color.Black : (int)Color.White;
 
         public NativeList<ulong> RepetitionPositionHistory;
 
         public int PlyCount;
-        public int FiftyMoveCounter => State.FiftyMoveCounter;
+        public readonly int FiftyMoveCounter => State.FiftyMoveCounter;
 
         public State State;
-        public ulong ZobristKey => State.ZobristKey;
+        public readonly ulong ZobristKey => State.ZobristKey;
 
         public NativeList<Move> Moves;
         public NativeList<Move> AllMoves;
 
         public NativeList<State> StateHistory;
 
-        public NativeArray<NativeHashSet<Square>> AllPieces;
+        public NativeArray<PieceSet> AllPieces;
 
         public bool HasCachedInCheckValue;
 
@@ -108,20 +108,20 @@ namespace Chess
             Pawns[1] = new(8, allocator);
 
             Knights = new(2, allocator);
-            Knights[0] = new(8, allocator);
-            Knights[1] = new(8, allocator);
+            Knights[0] = new(10, allocator);
+            Knights[1] = new(10, allocator);
 
             Bishops = new(2, allocator);
-            Bishops[0] = new(8, allocator);
-            Bishops[1] = new(8, allocator);
+            Bishops[0] = new(10, allocator);
+            Bishops[1] = new(10, allocator);
 
             Rooks = new(2, allocator);
-            Rooks[0] = new(8, allocator);
-            Rooks[1] = new(8, allocator);
+            Rooks[0] = new(10, allocator);
+            Rooks[1] = new(10, allocator);
 
             Queens = new(2, allocator);
-            Queens[0] = new(8, allocator);
-            Queens[1] = new(8, allocator);
+            Queens[0] = new(9, allocator);
+            Queens[1] = new(9, allocator);
 
             IsWhiteAllied = default;
 
@@ -184,21 +184,19 @@ namespace Chess
 
             AllPieces = new(Piece.MaxIndex + 1, allocator);
 
-            AllPieces[0] = new(0, allocator);
-
             AllPieces[1] = Pawns[0];
             AllPieces[2] = Knights[0];
             AllPieces[3] = Bishops[0];
             AllPieces[4] = Rooks[0];
             AllPieces[5] = Queens[0];
-            AllPieces[6] = new(0, allocator);
+            AllPieces[6] = new(1, allocator);
 
             AllPieces[7] = Pawns[1];
             AllPieces[8] = Knights[1];
             AllPieces[9] = Bishops[1];
             AllPieces[10] = Rooks[1];
             AllPieces[11] = Queens[1];
-            AllPieces[12] = new(0, allocator);
+            AllPieces[12] = new(1, allocator);
 
             DirectionRays = new(Direction.Count * Area, allocator);
             for (var direction = Direction.Begin; direction <= Direction.End; direction++)
@@ -291,8 +289,7 @@ namespace Chess
             PieceBitboards[piece.Index] ^= Bitboard.Empty.With(from).With(to);
             ColorBitboards[AlliedColorIndex] ^= Bitboard.Empty.With(from).With(to);
 
-            AllPieces[piece.Index].Remove(from);
-            AllPieces[piece.Index].Add(to);
+            AllPieces[piece.Index].Move(from, to);
 
             this[from] = Piece.Empty;
             this[to] = piece;
@@ -356,8 +353,7 @@ namespace Chess
 
                     PieceBitboards[rookPiece.Index] ^= Bitboard.Empty.With(castlingRookFrom).With(castlingRookTo);
                     ColorBitboards[AlliedColorIndex] ^= Bitboard.Empty.With(castlingRookFrom).With(castlingRookTo);
-                    AllPieces[rookPiece.Index].Remove(castlingRookFrom);
-                    AllPieces[rookPiece.Index].Add(castlingRookTo);
+                    AllPieces[rookPiece.Index].Move(castlingRookFrom, castlingRookTo);
                     this[castlingRookFrom] = Piece.Empty;
                     this[castlingRookTo] = new Piece(Figure.Rook, AlliedColor);
 
@@ -556,8 +552,7 @@ namespace Chess
                     this[rookSquareAfterCastling] = Piece.Empty;
                     this[rookSquareBeforeCastling] = rookPiece;
 
-                    AllPieces[rookPiece.Index].Remove(rookSquareAfterCastling);
-                    AllPieces[rookPiece.Index].Add(rookSquareBeforeCastling);
+                    AllPieces[rookPiece.Index].Move(rookSquareAfterCastling, rookSquareBeforeCastling);
                 }
             }
 
@@ -703,7 +698,7 @@ namespace Chess
             }
         }
 
-        public Bitboard GetSliderAttacks(Square square, Bitboard blockers, bool isOrthogonal)
+        public readonly Bitboard GetSliderAttacks(Square square, Bitboard blockers, bool isOrthogonal)
         {
             return isOrthogonal ? GetRookAttacks(square, blockers) : GetBishopAttacks(square, blockers);
         }
@@ -718,12 +713,12 @@ namespace Chess
             return Magic.GetBishopMask(square);
         }
 
-        public Bitboard GetRookAttacks(Square square, Bitboard blockers)
+        public readonly Bitboard GetRookAttacks(Square square, Bitboard blockers)
         {
             return Magic.GetRookAttacks(square, blockers);
         }
 
-        public Bitboard GetBishopAttacks(Square square, Bitboard blockers)
+        public readonly Bitboard GetBishopAttacks(Square square, Bitboard blockers)
         {
             return Magic.GetBishopAttacks(square, blockers);
         }
@@ -816,7 +811,6 @@ namespace Chess
             Queens[1].Dispose();
             Queens.Dispose();
 
-            AllPieces[0].Dispose();
             AllPieces[6].Dispose();
             AllPieces[12].Dispose();
             AllPieces.Dispose();
