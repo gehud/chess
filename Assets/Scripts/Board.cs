@@ -10,6 +10,8 @@ namespace Chess
         public const int Size = 8;
         public const int Area = Size * Size;
 
+        public string Fen => GetFen();
+
         public Piece this[Square coordinate]
         {
             get => Squares[coordinate.Index];
@@ -778,6 +780,107 @@ namespace Chess
 
             RepetitionPositionHistory.Add(State.ZobristKey);
             StateHistory.Add(State);
+        }
+
+        private string GetFen()
+        {
+            var fen = string.Empty;
+
+            for (var rank = Size - 1; rank >= 0; rank--)
+            {
+                var numEmptyFiles = 0;
+                for (var file = 0; file < Size; file++)
+                {
+                    var square = new Square(file, rank);
+                    var piece = this[square];
+
+                    if (!piece.IsEmpty)
+                    {
+                        if (numEmptyFiles != 0)
+                        {
+                            fen += numEmptyFiles;
+                            numEmptyFiles = 0;
+                        }
+
+                        var isBlack = piece.Color == Color.Black;
+                        var pieceFigure = piece.Figure;
+                        var pieceChar = ' ';
+
+                        switch (pieceFigure)
+                        {
+                            case Figure.Rook:
+                                pieceChar = 'R';
+                                break;
+                            case Figure.Knight:
+                                pieceChar = 'N';
+                                break;
+                            case Figure.Bishop:
+                                pieceChar = 'B';
+                                break;
+                            case Figure.Queen:
+                                pieceChar = 'Q';
+                                break;
+                            case Figure.King:
+                                pieceChar = 'K';
+                                break;
+                            case Figure.Pawn:
+                                pieceChar = 'P';
+                                break;
+                        }
+
+                        fen += (isBlack) ? pieceChar.ToString().ToLower() : pieceChar.ToString();
+                    }
+                    else
+                    {
+                        numEmptyFiles++;
+                    }
+
+                }
+                if (numEmptyFiles != 0)
+                {
+                    fen += numEmptyFiles;
+                }
+                if (rank != 0)
+                {
+                    fen += '/';
+                }
+            }
+
+            fen += ' ';
+            fen += IsWhiteAllied ? 'w' : 'b';
+
+            var whiteKingside = (State.CastlingRights & 1) == 1;
+            var whiteQueenside = (State.CastlingRights >> 1 & 1) == 1;
+            var blackKingside = (State.CastlingRights >> 2 & 1) == 1;
+            var blackQueenside = (State.CastlingRights >> 3 & 1) == 1;
+            fen += ' ';
+            fen += (whiteKingside) ? "K" : "";
+            fen += (whiteQueenside) ? "Q" : "";
+            fen += (blackKingside) ? "k" : "";
+            fen += (blackQueenside) ? "q" : "";
+            fen += ((State.CastlingRights) == 0) ? "-" : "";
+
+            fen += ' ';
+            var epFileIndex = State.EnPassantFile - 1;
+            var epRankIndex = IsWhiteAllied ? 5 : 2;
+
+            var isEnPassant = epFileIndex != -1;
+            if (isEnPassant)
+            {
+                fen += new Square(epFileIndex, epRankIndex).ToString();
+            }
+            else
+            {
+                fen += '-';
+            }
+
+            fen += ' ';
+            fen += State.FiftyMoveCounter;
+
+            fen += ' ';
+            fen += PlyCount / 2 + 1;
+
+            return fen;
         }
 
         public void Dispose()

@@ -166,7 +166,7 @@ namespace Chess
             for (var direction = startDirection; direction <= endDirection; direction++)
             {
                 var sliders = direction.IsDiagonal ? Board.EnemyDiagonalSliders : Board.EnemyOrthogonalSliders;
-
+                
                 if ((Board.GetRay(alliedKingSquare, direction) & sliders).IsEmpty)
                 {
                     continue;
@@ -175,7 +175,7 @@ namespace Chess
                 var distance = alliedKingSquare.GetBorderDistance(Board, direction);
 
                 var isPinBlocked = false;
-                var ray = default(Bitboard);
+                var ray = Bitboard.Empty;
 
                 for (var i = 1; i <= distance; i++)
                 {
@@ -206,11 +206,11 @@ namespace Chess
                             {
                                 if (isPinBlocked)
                                 {
-                                    pinSquares.Union(ray);
+                                    pinSquares |= ray;
                                 }
                                 else
                                 {
-                                    checkRayMask.Union(ray);
+                                    checkRayMask |= ray;
                                     MakeCheck();
                                 }
                             }
@@ -231,10 +231,11 @@ namespace Chess
 
         private readonly bool IsPinningDirection(Direction direction, Figure figure)
         {
-            return direction >= Direction.NorthWest
+            return figure == Figure.Queen 
+                || direction >= Direction.NorthWest
                 && figure == Figure.Bishop
-                || figure == Figure.Rook
-                || figure == Figure.Queen;
+                || direction <= Direction.East
+                && figure == Figure.Rook;
         }
 
         private void GenerateKingMoves()

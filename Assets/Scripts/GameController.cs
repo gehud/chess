@@ -56,6 +56,16 @@ namespace Chess
                 board.Load(fen);
             }
 
+            //board.MakeMove(new Move((Square)SquareName.F3, (Square)SquareName.H3));
+            //board.MakeMove(new Move((Square)SquareName.H8, (Square)SquareName.H3));
+            //board.MakeMove(new Move((Square)SquareName.E1, (Square)SquareName.F1));
+            //board.MakeMove(new Move((Square)SquareName.H3, (Square)SquareName.D3));
+
+            //Debug.Log(board.Fen);
+            //var perft = new Perft(board.Fen, Allocator.Temp);
+            //perft.Run(2, true);
+            //perft.Dispose();
+
             board.GenerateMoves();
             painter.Repaint(board);
 
