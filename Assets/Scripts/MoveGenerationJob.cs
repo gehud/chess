@@ -5,14 +5,17 @@ using Unity.Jobs;
 
 namespace Chess
 {
-    [BurstCompile]
+    [BurstCompile(CompileSynchronously = true)]
     public struct MoveGenerationJob : IJob
     {
-        [NativeDisableContainerSafetyRestriction]
+        [ReadOnly, NativeDisableContainerSafetyRestriction]
         public Board Board;
 
         [ReadOnly]
         public bool QuietMoves;
+
+        [WriteOnly]
+        public NativeList<Move> Moves;
 
         private bool isWhiteAllied;
         private Square alliedKingSquare;
@@ -56,7 +59,7 @@ namespace Chess
 
         private void AddMove(Square from, Square to, MoveFlags flags = MoveFlags.None)
         {
-            Board.Moves.Add(new Move(from, to, flags));
+            Moves.Add(new Move(from, to, flags));
         }
 
         private void Initialize()

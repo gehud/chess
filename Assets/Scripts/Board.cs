@@ -60,7 +60,6 @@ namespace Chess
         public State State;
         public readonly ulong ZobristKey => State.ZobristKey;
 
-        public NativeList<Move> Moves;
         public NativeList<Move> AllMoves;
 
         public NativeList<State> StateHistory;
@@ -131,7 +130,6 @@ namespace Chess
 
             PlyCount = default;
             State = default;
-            Moves = new NativeList<Move>(218, allocator);
             AllMoves = new NativeList<Move>(allocator);
 
             StateHistory = new(allocator);
@@ -592,18 +590,6 @@ namespace Chess
             parser.Dispose();
         }
 
-        public void GenerateMoves()
-        {
-            Moves.Clear();
-
-            new MoveGenerationJob
-            {
-                Board = this,
-                QuietMoves = true,
-            }
-            .Schedule().Complete();
-        }
-
         private void InitializeSquare(NativeArray<int2> knightJumps, int file, int rank)
         {
             var square = new Square(file, rank);
@@ -918,7 +904,6 @@ namespace Chess
             AllPieces[12].Dispose();
             AllPieces.Dispose();
 
-            Moves.Dispose();
             AllMoves.Dispose();
 
             Zobrist.Dispose();

@@ -31,34 +31,35 @@ namespace Chess
 
         private ulong Search(int depth, StringBuilder debugText, bool debug)
         {
-            board.GenerateMoves();
+            var moves = new MoveList(board, true, Allocator.TempJob);
 
             if (depth == 1)
             {
                 if (debug)
                 {
-                    for (var i = 0; i < board.Moves.Length; i++)
+                    foreach (var move in moves)
                     {
-                        debugText.AppendLine($"{board.Moves[i]}: 1");
+                        debugText.AppendLine($"{move}: 1");
                     }
                 }
 
-                return (ulong)board.Moves.Length;
-            }
+                var length = (ulong)moves.Length;
+                moves.Dispose();
 
-            var moves = new NativeList<Move>(Allocator.Temp);
-            moves.CopyFrom(board.Moves);
+                return length;
+            }
 
             var count = 0UL;
 
-            for (var i = 0; i < moves.Length; i++)
+            foreach (var move in moves)
             {
-                board.MakeMove(moves[i]);
+                board.MakeMove(move);
+
                 var innerCount = Run(depth - 1, false);
 
                 if (debug)
                 {
-                    debugText.AppendLine($"{moves[i]}: {innerCount}");
+                    debugText.AppendLine($"{move}: {innerCount}");
                 }
 
                 count += innerCount;

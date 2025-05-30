@@ -12,17 +12,18 @@ namespace Chess
 
         private Board board;
         private Controls controls;
+        private MoveList moves;
 
         private void OnPiecePicked(GameObject pieceSlot)
         {
-            painter.ShowMoves(pieceSlot, board);
+            painter.ShowMoves(pieceSlot, moves);
         }
 
         private void OnPieceDroppped(Square from, Square to)
         {
             var actualMove = default(Move);
 
-            foreach (var move in board.Moves)
+            foreach (var move in moves)
             {
                 if (move.From == from && move.To == to)
                 {
@@ -32,15 +33,22 @@ namespace Chess
             }
 
             board.MakeMove(actualMove);
-            board.GenerateMoves();
+            moves.Dispose();
+            moves = GetLegalMoves();
             painter.Repaint(board);
         }
 
         private void OnUndo()
         {
             board.UnmakeLastMove();
-            board.GenerateMoves();
+            moves.Dispose();
+            moves = GetLegalMoves();
             painter.Repaint(board);
+        }
+
+        private MoveList GetLegalMoves()
+        {
+            return new MoveList(board, true, Allocator.Persistent);
         }
 
         private void Awake()
@@ -66,7 +74,7 @@ namespace Chess
             //perft.Run(2, true);
             //perft.Dispose();
 
-            board.GenerateMoves();
+            moves = GetLegalMoves();
             painter.Repaint(board);
 
             controls = new();
@@ -90,6 +98,7 @@ namespace Chess
         private void OnDestroy()
         {
             board.Dispose();
+            moves.Dispose();
         }
     }
 }
