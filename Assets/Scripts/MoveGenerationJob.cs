@@ -123,7 +123,7 @@ namespace Chess
             }
         }
 
-        private Bitboard FindSlidingValidationSquares()
+        private readonly Bitboard FindSlidingValidationSquares()
         {
             var all = Bitboard.Empty;
 
@@ -133,7 +133,7 @@ namespace Chess
             return all;
         }
 
-        private Bitboard UpdateSlidingAttack(Bitboard board, bool isOrthogonal)
+        private readonly Bitboard UpdateSlidingAttack(Bitboard board, bool isOrthogonal)
         {
             var result = Bitboard.Empty;
 
@@ -485,7 +485,7 @@ namespace Chess
             }
         }
 
-        private bool IsInCheckAfterEnPassant(Square startSquare, Square targetSquare, Square capturedPawnSquare)
+        private readonly bool IsInCheckAfterEnPassant(Square startSquare, Square targetSquare, Square capturedPawnSquare)
         {
             var enemyOrtho = Board.EnemyOrthogonalSliders;
 
