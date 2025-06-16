@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace Chess
 {
@@ -14,9 +13,27 @@ namespace Chess
         private float targetDelta = 0.0f;
         private float deltaVelocity = 0.0f;
 
+        private Controls controls;
+
+        private void Awake()
+        {
+            controls = new();
+            controls.Player.Zoom.performed += (ctx) => targetDelta = ctx.ReadValue<float>();
+            controls.Player.Zoom.canceled += (ctx) => targetDelta = 0f;
+        }
+
+        private void OnEnable()
+        {
+            controls.Enable();
+        }
+
+        private void OnDisable()
+        {
+            controls.Disable();
+        }
+
         private void Update()
         {
-            targetDelta = Mouse.current.scroll.y.ReadValue();
             delta = Mathf.SmoothDamp(delta, targetDelta, ref deltaVelocity, smoothTime);
             transform.Translate(delta * sensitivity * Vector3.forward);
         }

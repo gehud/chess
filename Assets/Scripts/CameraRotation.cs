@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace Chess
 {
@@ -10,34 +9,46 @@ namespace Chess
         [SerializeField]
         private float smoothTime = 0.1f;
 
-        private Vector3 mouseDelta = Vector3.zero;
+        private bool isDragging = false;
+        private Vector3 delta = Vector3.zero;
         private Vector3 targetDelta = Vector3.zero;
         private Vector3 deltaVelocity = Vector3.zero;
 
+        private Controls controls;
+
         private void Awake()
         {
+            controls = new();
+            controls.Player.Hold.started += (ctx) => isDragging = true;
+            controls.Player.Hold.canceled += (ctx) => isDragging = false;
+
             transform.LookAt(Vector3.zero);
+        }
+
+        private void OnEnable()
+        {
+            controls.Enable();
+        }
+
+        private void OnDisable()
+        {
+            controls.Disable();
         }
 
         private void Update()
         {
-            if (Mouse.current.rightButton.isPressed)
+            if (isDragging)
             {
-                targetDelta = new Vector3
-                {
-                    x = Mouse.current.delta.x.ReadValue(),
-                    y = Mouse.current.delta.y.ReadValue(),
-                };
+                targetDelta = controls.Player.Drag.ReadValue<Vector2>();
             }
             else
             {
                 targetDelta = Vector3.zero;
             }
 
-            mouseDelta = Vector3.SmoothDamp(mouseDelta, targetDelta, ref deltaVelocity, smoothTime);
-
-            transform.RotateAround(Vector3.zero, Vector3.up, mouseDelta.x * sencitivity);
-            transform.RotateAround(Vector3.zero, transform.right, -mouseDelta.y * sencitivity);
+            delta = Vector3.SmoothDamp(delta, targetDelta, ref deltaVelocity, smoothTime);
+            transform.RotateAround(Vector3.zero, Vector3.up, delta.x * sencitivity);
+            transform.RotateAround(Vector3.zero, transform.right, -delta.y * sencitivity);
         }
     }
 }
