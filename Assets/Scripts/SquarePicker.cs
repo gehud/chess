@@ -6,10 +6,10 @@ namespace Chess
     public class SquarePicker : MonoBehaviour
     {
         public delegate void SelectedHandler(Square square);
-        public SelectedHandler Selected;
+        public static SelectedHandler Selected;
 
         public delegate void DeselectedHandler();
-        public DeselectedHandler Deselected;
+        public static DeselectedHandler Deselected;
 
         private Controls controls;
 
@@ -24,15 +24,21 @@ namespace Chess
             }
 
             var point = hitInfo.point;
+            point += new Vector3
+            {
+                x = 0.5f,
+                y = 0f,
+                z = 0.5f,
+            };
 
             var square = Vector3Int.FloorToInt(point);
-            if (square.x < -4 || square.x > 3 || square.z < -4 || square.z > 3)
+            if (square.x < 0 || square.x >= Board.Size || square.z < 0 || square.z >= Board.Size)
             {
                 Deselected?.Invoke();
                 return;
             }
 
-            Selected?.Invoke(new((square.z + 4) * 8 + square.x + 4));
+            Selected?.Invoke(new(square.x, square.z));
         }
 
         private void Awake()

@@ -5,6 +5,8 @@ namespace Chess
     public class CameraRotation : MonoBehaviour
     {
         [SerializeField]
+        private Transform target;
+        [SerializeField]
         private float sencitivity = 2.0f;
         [SerializeField]
         private float smoothTime = 0.1f;
@@ -22,7 +24,7 @@ namespace Chess
             controls.Player.Hold.started += (ctx) => isDragging = true;
             controls.Player.Hold.canceled += (ctx) => isDragging = false;
 
-            transform.LookAt(Vector3.zero);
+            transform.LookAt(target.position);
         }
 
         private void OnEnable()
@@ -47,8 +49,8 @@ namespace Chess
             }
 
             delta = Vector3.SmoothDamp(delta, targetDelta, ref deltaVelocity, smoothTime);
-            transform.RotateAround(Vector3.zero, Vector3.up, delta.x * sencitivity);
-            transform.RotateAround(Vector3.zero, transform.right, -delta.y * sencitivity);
+            transform.RotateAround(target.position, Vector3.up, delta.x * sencitivity);
+            transform.RotateAround(target.position, transform.right, -delta.y * sencitivity);
         }
     }
 }

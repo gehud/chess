@@ -8,6 +8,8 @@ namespace Chess
 {
     public struct MoveList : IDisposable, IEnumerable<Move>
     {
+        public readonly bool IsCreated => moves.IsCreated;
+
         public NativeArray<Move>.ReadOnly Items => moves.AsReadOnly();
 
         public readonly int Length => moves.Length;
