@@ -17,6 +17,8 @@ namespace Chess
         private IndicatorSpawner indicatorSpawner;
         [SerializeField]
         private PromotionSelector promotionSelector;
+        [SerializeField]
+        private MenuManager menuManager;
 
         private Board board;
         private MoveList moves;
@@ -25,7 +27,6 @@ namespace Chess
         private List<GameObject> moveIndicators;
         private GameObject checkIndicator;
         private Square? selectedSquare;
-        private bool isInSelection;
 
         private void ClearViews()
         {
@@ -83,11 +84,6 @@ namespace Chess
 
         private IEnumerator SelectSquare(Square square)
         {
-            if (isInSelection)
-            {
-                yield break;
-            }
-
             if (selectedSquare == square)
             {
                 selectedSquare = null;
@@ -119,11 +115,9 @@ namespace Chess
 
             if ((move.Flags & MoveFlags.Promotion) != MoveFlags.None)
             {
-                isInSelection = true;
                 yield return StartCoroutine(promotionSelector.StartSelection(move.To));
                 if (promotionSelector.Result == PromotionSelector.PromotionSelectionResult.None)
                 {
-                    isInSelection = false;
                     yield break;
                 }
 
@@ -147,17 +141,26 @@ namespace Chess
             moves = new(board, true, Allocator.Persistent);
             ClearIndicators();
             UpdateViews();
-            isInSelection = false;
+
+            if (moves.IsInCheck && moves.Length == 0)
+            {
+                menuManager.ShowWinner(board.EnemyColor);
+            }
         }
 
         private void OnSquareSelected(Square square)
         {
+            if (promotionSelector.IsOpened || menuManager.IsOpened)
+            {
+                return;
+            }
+
             StartCoroutine(SelectSquare(square));
         }
 
         private void OnSquareDeselected()
         {
-            if (isInSelection)
+            if (promotionSelector.IsOpened || menuManager.IsOpened)
             {
                 return;
             }

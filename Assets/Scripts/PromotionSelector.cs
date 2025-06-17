@@ -5,6 +5,8 @@ namespace Chess
 {
     public partial class PromotionSelector : MonoBehaviour
     {
+        public bool IsOpened => background.activeSelf;
+
         public PromotionSelectionResult? Result => result;
 
         [SerializeField]
