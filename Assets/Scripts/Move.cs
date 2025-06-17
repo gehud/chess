@@ -1,7 +1,11 @@
-﻿namespace Chess
+﻿using System;
+
+namespace Chess
 {
-    public readonly struct Move
+    public readonly struct Move : IEquatable<Move>
     {
+        public static Move Invalid => new(Square.A1, Square.A1);
+
         public readonly bool IsValid => From != To;
 
         public readonly Square From;
@@ -40,6 +44,36 @@
         public override string ToString()
         {
             return $"{From}{To}{FormatFlags()}";
+        }
+
+        public bool Equals(Move other)
+        {
+            return From == other.From && To == other.To && Flags == other.Flags;
+        }
+
+        public override bool Equals(object other)
+        {
+            if (other is not Move move)
+            {
+                return false;
+            }
+
+            return Equals(move);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(From, To, Flags);
+        }
+
+        public static bool operator ==(Move left, Move right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(Move left, Move right)
+        {
+            return !left.Equals(right);
         }
     }
 }

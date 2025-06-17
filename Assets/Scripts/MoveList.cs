@@ -8,24 +8,38 @@ namespace Chess
 {
     public struct MoveList : IDisposable, IEnumerable<Move>
     {
-        public readonly bool IsCreated => moves.IsCreated;
+        public readonly bool IsCreated => data.Value.Moves.IsCreated;
 
-        public readonly bool IsInCheck => isInCheck;
+        public readonly bool IsInCheck => data.Value.IsInCheck;
 
-        public NativeArray<Move>.ReadOnly Items => moves.AsReadOnly();
+        public readonly Bitboard AttackSquares => data.Value.AttackSquares;
 
-        public readonly int Length => moves.Length;
+        public NativeList<Move> Items => data.Value.Moves;
+
+        public readonly int Length => data.Value.Moves.Length;
 
         public const int MaxMoves = 256;
 
-        private NativeList<Move> moves;
-        private readonly bool isInCheck;
+        public Move this[int index]
+        {
+            get => data.Value.Moves[index];
+        }
+
+        private struct Data
+        {
+            public NativeList<Move> Moves;
+            public bool IsInCheck;
+            public Bitboard AttackSquares;
+        }
+
+        private NativeReference<Data> data;
 
         public MoveList(in Board board, bool quietMoves, Allocator allocator)
         {
-            moves = new(MaxMoves, allocator);
+            var moves = new NativeList<Move>(MaxMoves, allocator);
 
             var isInCheckRef = new NativeReference<bool>(Allocator.TempJob);
+            var attackSquaresRef = new NativeReference<Bitboard>(Allocator.TempJob);
 
             var job = new MoveGenerationJob
             {
@@ -33,23 +47,30 @@ namespace Chess
                 Moves = moves,
                 QuietMoves = quietMoves,
                 IsInCheck = isInCheckRef,
+                AttackSquares = attackSquaresRef
             };
 
             job.Schedule().Complete();
 
-            isInCheck = job.IsInCheck.Value;
+            data = new(new Data
+            {
+                Moves = moves,
+                IsInCheck = isInCheckRef.Value,
+            }, allocator);
 
             isInCheckRef.Dispose();
+            attackSquaresRef.Dispose();
         }
 
         public void Dispose()
         {
-            moves.Dispose();
+            data.Value.Moves.Dispose();
+            data.Dispose();
         }
 
         public IEnumerator<Move> GetEnumerator()
         {
-            return Items.GetEnumerator();
+            return data.Value.Moves.AsReadOnly().GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()

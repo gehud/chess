@@ -28,7 +28,7 @@ namespace Chess
         private Bitboard pinSquares;
         private Bitboard nonPinSquares;
         private Bitboard attackSquaresNoPawns;
-        private Bitboard attackSquares;
+        public NativeReference<Bitboard> AttackSquares;
         private Bitboard pawnAttackSquares;
 
         private Bitboard enemyPieces;
@@ -115,7 +115,7 @@ namespace Chess
             }
 
             attackSquaresNoPawns = slidingAttackSquares | knightAttackSquares | Board.KingMoves[enemyKingSquare.Index];
-            attackSquares = attackSquaresNoPawns | pawnAttackSquares;
+            AttackSquares.Value = attackSquaresNoPawns | pawnAttackSquares;
 
             if (!IsInCheck.Value)
             {
@@ -243,7 +243,7 @@ namespace Chess
 
         private void GenerateKingMoves()
         {
-            var legalMask = ~(attackSquares | alliedPieces);
+            var legalMask = ~(AttackSquares.Value | alliedPieces);
             var kingMoves = Board.KingMoves[alliedKingSquare.Index] & legalMask & moveTypeMask;
 
             while (!kingMoves.IsEmpty)
@@ -254,7 +254,7 @@ namespace Chess
 
             if (!IsInCheck.Value && QuietMoves)
             {
-                var castleBlockers = attackSquares | Board.AllPiecesBitboard;
+                var castleBlockers = AttackSquares.Value | Board.AllPiecesBitboard;
 
                 if (Board.State.HasKingsideCastleRight(isWhiteAllied))
                 {

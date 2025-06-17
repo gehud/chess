@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Unity.Collections;
 using UnityEngine;
 
@@ -19,6 +20,8 @@ namespace Chess
         private PromotionSelector promotionSelector;
         [SerializeField]
         private MenuManager menuManager;
+        [SerializeField]
+        private BotController botController;
 
         private Board board;
         private MoveList moves;
@@ -27,14 +30,17 @@ namespace Chess
         private List<GameObject> moveIndicators;
         private GameObject checkIndicator;
         private Square? selectedSquare;
+        private bool isPlayerMove;
 
         private void ClearViews()
         {
-            foreach (var view in views)
+            for (var i = 0; i < views.Count(); i++)
             {
+                var view = views[i];
                 if (view != null)
                 {
                     Destroy(view);
+                    views[i] = null;
                 }
             }
 
@@ -136,21 +142,20 @@ namespace Chess
             }
 
             selectedSquare = null;
-            board.MakeMove(move);
-            moves.Dispose();
-            moves = new(board, true, Allocator.Persistent);
-            ClearIndicators();
-            UpdateViews();
-
-            if (moves.IsInCheck && moves.Length == 0)
+            if (!MakeMove(move))
             {
-                menuManager.ShowWinner(board.EnemyColor);
+                yield break;
+            }
+
+            if (!isPlayerMove)
+            {
+                botController.StartSearch(board);
             }
         }
 
         private void OnSquareSelected(Square square)
         {
-            if (promotionSelector.IsOpened || menuManager.IsOpened)
+            if (!isPlayerMove || promotionSelector.IsOpened || menuManager.IsOpened)
             {
                 return;
             }
@@ -160,7 +165,7 @@ namespace Chess
 
         private void OnSquareDeselected()
         {
-            if (promotionSelector.IsOpened || menuManager.IsOpened)
+            if (!isPlayerMove || promotionSelector.IsOpened || menuManager.IsOpened)
             {
                 return;
             }
@@ -179,6 +184,29 @@ namespace Chess
             moveIndicators.Clear();
         }
 
+        private bool MakeMove(Move move)
+        {
+            board.MakeMove(move);
+            moves.Dispose();
+            moves = new(board, true, Allocator.Persistent);
+            ClearIndicators();
+            UpdateViews();
+            isPlayerMove = !isPlayerMove;
+
+            if (moves.IsInCheck && moves.Length == 0)
+            {
+                menuManager.ShowWinner(board.EnemyColor);
+                return false;
+            }
+
+            return true;
+        }
+
+        private void OnSearchCompleted(Move move)
+        {
+            MakeMove(move);
+        }
+
         private void Awake()
         {
             board = new Board(Allocator.Persistent);
@@ -186,18 +214,21 @@ namespace Chess
             moves = new(board, true, Allocator.Persistent);
             views = new GameObject[Board.Area];
             moveIndicators = new();
+            isPlayerMove = board.IsWhiteAllied;
         }
 
         private void OnEnable()
         {
             SquarePicker.Selected += OnSquareSelected;
             SquarePicker.Deselected += OnSquareDeselected;
+            BotController.SearchCompleted += OnSearchCompleted;
         }
 
         private void OnDisable()
         {
             SquarePicker.Selected -= OnSquareSelected;
             SquarePicker.Deselected -= OnSquareDeselected;
+            BotController.SearchCompleted -= OnSearchCompleted;
         }
 
         private void Start()

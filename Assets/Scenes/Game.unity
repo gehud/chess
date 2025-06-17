@@ -1918,7 +1918,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 911264563}
         m_TargetAssemblyTypeName: Chess.MenuManager, Chess
-        m_MethodName: Restart
+        m_MethodName: Quit
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -2013,6 +2013,51 @@ MonoBehaviour:
   indicator: {fileID: 4790263367289010411, guid: 02711a03fd8349543a0cb107e1d4525d, type: 3}
   move: {fileID: 2100000, guid: 72dde6863fd9887489b31ef55027e9e3, type: 2}
   check: {fileID: 2100000, guid: 89add11815127c949b0fcbda1a84676f, type: 2}
+--- !u!1 &769555650
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 769555652}
+  - component: {fileID: 769555651}
+  m_Layer: 0
+  m_Name: BotController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &769555651
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 769555650}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f2de82f572126944a6bc24aeed51190, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  searchTime: 3000
+--- !u!4 &769555652
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 769555650}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
@@ -2478,11 +2523,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 11cdff178a6dbc444965668024a28b45, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  startFen: 'rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  '
+  startFen: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
   pieceSpawner: {fileID: 1272721464}
   indicatorSpawner: {fileID: 739350834}
   promotionSelector: {fileID: 56495944}
   menuManager: {fileID: 911264563}
+  botController: {fileID: 769555651}
 --- !u!4 &1171483960
 Transform:
   m_ObjectHideFlags: 0
@@ -3542,4 +3588,5 @@ SceneRoots:
   - {fileID: 557439076}
   - {fileID: 56495945}
   - {fileID: 911264562}
+  - {fileID: 769555652}
   - {fileID: 1603814287}
