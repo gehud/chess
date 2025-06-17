@@ -20,7 +20,7 @@ namespace Chess
         private bool isWhiteAllied;
         private Square alliedKingSquare;
 
-        private bool isInCheck;
+        public NativeReference<bool> IsInCheck;
         private bool isInDoubleCheck;
 
         private Bitboard checkRayMask;
@@ -117,7 +117,7 @@ namespace Chess
             attackSquaresNoPawns = slidingAttackSquares | knightAttackSquares | Board.KingMoves[enemyKingSquare.Index];
             attackSquares = attackSquaresNoPawns | pawnAttackSquares;
 
-            if (!isInCheck)
+            if (!IsInCheck.Value)
             {
                 checkRayMask = Bitboard.All;
             }
@@ -151,8 +151,8 @@ namespace Chess
 
         private void MakeCheck()
         {
-            isInDoubleCheck = isInCheck;
-            isInCheck = true;
+            isInDoubleCheck = IsInCheck.Value;
+            IsInCheck.Value = true;
         }
 
         private void FindPinAndCheckSquares()
@@ -252,7 +252,7 @@ namespace Chess
                 AddMove(alliedKingSquare, square);
             }
 
-            if (!isInCheck && QuietMoves)
+            if (!IsInCheck.Value && QuietMoves)
             {
                 var castleBlockers = attackSquares | Board.AllPiecesBitboard;
 
@@ -291,7 +291,7 @@ namespace Chess
             var orthogonalSliders = Board.AlliedOrthogonalSliders;
             var diagonalSliders = Board.AlliedDiagonalSliders;
 
-            if (isInCheck)
+            if (IsInCheck.Value)
             {
                 orthogonalSliders &= ~pinSquares;
                 diagonalSliders &= ~pinSquares;

@@ -10,6 +10,8 @@ namespace Chess
     {
         public readonly bool IsCreated => moves.IsCreated;
 
+        public readonly bool IsInCheck => isInCheck;
+
         public NativeArray<Move>.ReadOnly Items => moves.AsReadOnly();
 
         public readonly int Length => moves.Length;
@@ -17,19 +19,27 @@ namespace Chess
         public const int MaxMoves = 256;
 
         private NativeList<Move> moves;
+        private readonly bool isInCheck;
 
         public MoveList(in Board board, bool quietMoves, Allocator allocator)
         {
             moves = new(MaxMoves, allocator);
 
-            new MoveGenerationJob
+            var isInCheckRef = new NativeReference<bool>(Allocator.TempJob);
+
+            var job = new MoveGenerationJob
             {
                 Board = board,
                 Moves = moves,
                 QuietMoves = quietMoves,
-            }
-            .Schedule()
-            .Complete();
+                IsInCheck = isInCheckRef,
+            };
+
+            job.Schedule().Complete();
+
+            isInCheck = job.IsInCheck.Value;
+
+            isInCheckRef.Dispose();
         }
 
         public void Dispose()

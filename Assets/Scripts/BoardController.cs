@@ -36,6 +36,8 @@ namespace Chess
                     Destroy(view);
                 }
             }
+
+            ClearCheckIndicator();
         }
 
         private void SpawnViews()
@@ -53,12 +55,30 @@ namespace Chess
                 view.transform.position = new Vector3(square.File, 0f, square.Rank);
                 views[i] = view;
             }
+
+            SpawnCheckIndicator();
+        }
+
+        private void SpawnCheckIndicator()
+        {
+            if (moves.IsInCheck)
+            {
+                checkIndicator = indicatorSpawner.Spawn(Indication.Check, board.Kings[board.AlliedColorIndex]);
+            }
         }
 
         private void UpdateViews()
         {
             ClearViews();
             SpawnViews();
+        }
+
+        private void ClearCheckIndicator()
+        {
+            if (checkIndicator != null)
+            {
+                Destroy(checkIndicator);
+            }
         }
 
         private IEnumerator SelectSquare(Square square)
