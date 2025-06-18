@@ -2,7 +2,8 @@
 {
     public enum Indication
     {
-        Move,
-        Check
+        AvailableMove,
+        LastMove,
+        UnderCheck,
     }
 }

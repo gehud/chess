@@ -17,6 +17,8 @@ namespace Chess
         private GameObject blackWon;
         [SerializeField]
         private GameObject whiteWon;
+        [SerializeField]
+        private GameObject draw;
 
         private Controls controls;
         private bool isGameOver;
@@ -36,11 +38,22 @@ namespace Chess
             SceneManager.LoadScene(0);
         }
 
-        public void ShowWinner(Color color)
+        private void OnGameOver()
         {
             origin.SetActive(true);
             isGameOver = true;
             close.SetActive(false);
+        }
+
+        public void ShowDraw()
+        {
+            OnGameOver();
+            draw.SetActive(true);
+        }
+
+        public void ShowWinner(Color color)
+        {
+            OnGameOver();   
             switch (color)
             {
                 case Color.Black:

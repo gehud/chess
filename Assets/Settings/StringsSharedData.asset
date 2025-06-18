@@ -35,6 +35,10 @@ MonoBehaviour:
     m_Key: Close
     m_Metadata:
       m_Items: []
+  - m_Id: 390502347649024
+    m_Key: Draw
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

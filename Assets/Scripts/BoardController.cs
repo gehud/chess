@@ -30,6 +30,8 @@ namespace Chess
         private GameObject checkIndicator;
         private Square? selectedSquare;
         private bool isPlayerMove;
+        private GameObject moveFromIndicator;
+        private GameObject moveToIndicator;
 
         private void ClearViews()
         {
@@ -69,7 +71,7 @@ namespace Chess
         {
             if (moves.IsInCheck)
             {
-                checkIndicator = indicatorSpawner.Spawn(Indication.Check, board.Kings[board.AlliedColorIndex]);
+                checkIndicator = indicatorSpawner.Spawn(Indication.UnderCheck, board.Kings[board.AlliedColorIndex]);
             }
         }
 
@@ -105,7 +107,7 @@ namespace Chess
                 var squares = moves.Where(move => move.From == square).Select(move => move.To);
                 foreach (var availableSquare in squares.Append(square))
                 {
-                    moveIndicators.Add(indicatorSpawner.Spawn(Indication.Move, availableSquare));
+                    moveIndicators.Add(indicatorSpawner.Spawn(Indication.AvailableMove, availableSquare));
                 }
 
                 yield break;
@@ -190,13 +192,37 @@ namespace Chess
             UpdateViews();
             isPlayerMove = !isPlayerMove;
 
+            UpdateLastMoveViews(move);
+
             if (moves.IsInCheck && moves.Length == 0)
             {
                 menuManager.ShowWinner(board.EnemyColor);
                 return false;
             }
 
+            if (board.FiftyMoveCounter >= 50)
+            {
+                menuManager.ShowDraw();
+                return false;
+            }
+
             return true;
+        }
+
+        private void UpdateLastMoveViews(Move move)
+        {
+            if (moveFromIndicator != null)
+            {
+                DestroyImmediate(moveFromIndicator);
+            }
+
+            if (moveToIndicator != null)
+            {
+                DestroyImmediate(moveToIndicator);
+            }
+
+            moveFromIndicator = indicatorSpawner.Spawn(Indication.LastMove, move.From);
+            moveToIndicator = indicatorSpawner.Spawn(Indication.LastMove, move.To);
         }
 
         private void OnSearchCompleted(Move move)

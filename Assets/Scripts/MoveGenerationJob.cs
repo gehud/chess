@@ -14,12 +14,13 @@ namespace Chess
         [ReadOnly]
         public bool QuietMoves;
 
-        [WriteOnly]
+        [WriteOnly, NativeDisableContainerSafetyRestriction]
         public NativeList<Move> Moves;
 
         private bool isWhiteAllied;
         private Square alliedKingSquare;
 
+        [NativeDisableContainerSafetyRestriction]
         public NativeReference<bool> IsInCheck;
         private bool isInDoubleCheck;
 
@@ -28,6 +29,7 @@ namespace Chess
         private Bitboard pinSquares;
         private Bitboard nonPinSquares;
         private Bitboard attackSquaresNoPawns;
+        [NativeDisableContainerSafetyRestriction]
         public NativeReference<Bitboard> AttackSquares;
         private Bitboard pawnAttackSquares;
 

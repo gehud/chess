@@ -8,9 +8,11 @@ namespace Chess
         private GameObject indicator;
         [Space]
         [SerializeField]
-        private Material move;
+        private Material availableMove;
         [SerializeField]
-        private Material check;
+        private Material lastMove;
+        [SerializeField]
+        private Material underCheck;
 
         public GameObject Spawn(Indication indication, Square square)
         {
@@ -18,8 +20,9 @@ namespace Chess
 
             instance.GetComponent<MeshRenderer>().material = indication switch
             {
-                Indication.Move => move,
-                Indication.Check => check,
+                Indication.AvailableMove => availableMove,
+                Indication.LastMove => lastMove,
+                Indication.UnderCheck => underCheck,
                 _ => null,
             };
 
