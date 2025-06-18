@@ -113,12 +113,12 @@ namespace Chess
 
             var move = moves.FirstOrDefault(move => move.From == selectedSquare && move.To == square);
 
-            if (!move.IsValid)
+            if (move.IsNull)
             {
                 yield break;
             }
 
-            if ((move.Flags & MoveFlags.Promotion) != MoveFlags.None)
+            if (move.IsPromotion)
             {
                 yield return StartCoroutine(promotionSelector.StartSelection(move.To));
                 if (promotionSelector.Result == PromotionSelector.PromotionSelectionResult.None)
@@ -126,14 +126,12 @@ namespace Chess
                     yield break;
                 }
 
-                var flags = move.Flags;
-                flags &= ~MoveFlags.Promotion;
-                flags |= promotionSelector.Result switch
+                var flags = promotionSelector.Result switch
                 {
-                    PromotionSelector.PromotionSelectionResult.Queen => MoveFlags.QueenPromotion,
-                    PromotionSelector.PromotionSelectionResult.Rook => MoveFlags.RookPromotion,
-                    PromotionSelector.PromotionSelectionResult.Bishop => MoveFlags.BishopPromotion,
-                    PromotionSelector.PromotionSelectionResult.Knight => MoveFlags.KnightPromotion,
+                    PromotionSelector.PromotionSelectionResult.Queen => MoveFlag.QueenPromotion,
+                    PromotionSelector.PromotionSelectionResult.Rook => MoveFlag.RookPromotion,
+                    PromotionSelector.PromotionSelectionResult.Bishop => MoveFlag.BishopPromotion,
+                    PromotionSelector.PromotionSelectionResult.Knight => MoveFlag.KnightPromotion,
                     _ => default,
                 };
 

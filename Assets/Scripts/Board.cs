@@ -1,8 +1,6 @@
 ﻿using System;
 using Unity.Collections;
-using Unity.Jobs;
 using Unity.Mathematics;
-using UnityEngine;
 
 namespace Chess
 {
@@ -300,10 +298,10 @@ namespace Chess
         {
             var from = move.From;
             var to = move.To;
-            var flags = move.Flags;
+            var flag = move.Flag;
 
-            var isPromotion = (flags & MoveFlags.Promotion) != MoveFlags.None;
-            var isEnPassant = (flags & MoveFlags.EnPassant) != MoveFlags.None;
+            var isPromotion = move.IsPromotion;
+            var isEnPassant = flag == MoveFlag.EnPassant;
 
             var movedPiece = this[from];
             var movedFigure = movedPiece.Figure;
@@ -345,7 +343,7 @@ namespace Chess
                 Kings[AlliedColorIndex] = to;
                 newCastlingRights &= IsWhiteAllied ? 0b1100 : 0b0011;
 
-                if ((flags & MoveFlags.Castling) != MoveFlags.None)
+                if (flag == MoveFlag.Castling)
                 {
                     var rookPiece = new Piece(Figure.Rook, AlliedColor);
                     var kingside = to == Square.G1 || to == Square.G8;
@@ -367,24 +365,14 @@ namespace Chess
             {
                 TotalPieceCountWithoutPawnsAndKings++;
 
-                var promotionFigure = Figure.None;
-
-                if ((flags & MoveFlags.QueenPromotion) != MoveFlags.None)
+                var promotionFigure = flag switch
                 {
-                    promotionFigure = Figure.Queen;
-                }
-                else if ((flags & MoveFlags.RookPromotion) != MoveFlags.None)
-                {
-                    promotionFigure = Figure.Rook;
-                }
-                else if ((flags & MoveFlags.KnightPromotion) != MoveFlags.None)
-                {
-                    promotionFigure = Figure.Knight;
-                }
-                else if ((flags & MoveFlags.BishopPromotion) != MoveFlags.None)
-                {
-                    promotionFigure = Figure.Bishop;
-                }
+                    MoveFlag.KnightPromotion => Figure.Knight,
+                    MoveFlag.BishopPromotion => Figure.Bishop,
+                    MoveFlag.RookPromotion => Figure.Rook,
+                    MoveFlag.QueenPromotion => Figure.Queen,
+                    _ => Figure.None,
+                };
 
                 var promotionPiece = new Piece(promotionFigure, AlliedColor);
 
@@ -397,7 +385,7 @@ namespace Chess
                 this[to] = promotionPiece;
             }
 
-            if ((flags & MoveFlags.DoublePawnMove) != MoveFlags.None)
+            if (flag == MoveFlag.DoubleForwardPawn)
             {
                 var file = from.File + 1;
                 newEnPassantFile = file;
@@ -491,10 +479,10 @@ namespace Chess
 
             var from = move.From;
             var to = move.To;
-            var flags = move.Flags;
+            var flag = move.Flag;
 
-            var undoingEnPassant = (flags & MoveFlags.EnPassant) != MoveFlags.None;
-            var undoingPromotion = (flags & MoveFlags.Promotion) != MoveFlags.None;
+            var undoingPromotion = move.IsPromotion;
+            var undoingEnPassant = flag == MoveFlag.EnPassant;
             var undoingCapture = State.CapturedFigure != Figure.None;
 
             var movedPiece = undoingPromotion ? new Piece(Figure.Pawn, AlliedColor) : this[to];
@@ -540,7 +528,7 @@ namespace Chess
             {
                 Kings[AlliedColorIndex] = from;
 
-                if ((flags & MoveFlags.Castling) != MoveFlags.None)
+                if (flag == MoveFlag.Castling)
                 {
                     var rookPiece = new Piece(Figure.Rook, AlliedColor);
                     var kingside = to == Square.G1 || to == Square.G8;

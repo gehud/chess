@@ -36,7 +36,7 @@ namespace Chess
 
         public void Execute()
         {
-            bestMoveThisIteration = BestMove.Value = Move.Invalid;
+            bestMoveThisIteration = BestMove.Value = Move.Null;
             TranspositionTable.Clear();
 
             for (int searchDepth = 1; searchDepth <= maxSearchDepth; searchDepth++)
@@ -56,11 +56,11 @@ namespace Chess
                 else
                 {
                     BestMove.Value = bestMoveThisIteration;
-                    bestMoveThisIteration = Move.Invalid;
+                    bestMoveThisIteration = Move.Null;
                 }
             }
 
-            if (!BestMove.Value.IsValid)
+            if (BestMove.Value.IsNull)
             {
                 var moves = new MoveList(Board, true, Allocator.TempJob, MoveList.Execution.Inline);
                 BestMove.Value = moves[0];
@@ -146,7 +146,7 @@ namespace Chess
             }
 
             var transposition = Transposition.UpperBound;
-            var bestMoveInThisPosition = Move.Invalid;
+            var bestMoveInThisPosition = Move.Null;
 
             for (var i = 0; i < moves.Length; i++)
             {
@@ -234,7 +234,7 @@ namespace Chess
                 var score = 0;
                 var moveFigure = Board[move.From].Figure;
                 var captureFigure = Board[move.To].Figure;
-                var flags = move.Flags;
+                var flag = move.Flag;
 
                 if (captureFigure != Figure.None)
                 {
@@ -243,22 +243,20 @@ namespace Chess
 
                 if (moveFigure == Figure.Pawn)
                 {
-
-                    if ((flags & MoveFlags.QueenPromotion) != MoveFlags.None)
+                    switch (flag)
                     {
-                        score += queenScore;
-                    }
-                    else if ((flags & MoveFlags.KnightPromotion) != MoveFlags.None)
-                    {
-                        score += knightScore;
-                    }
-                    else if ((flags & MoveFlags.RookPromotion) != MoveFlags.None)
-                    {
-                        score += rookScore;
-                    }
-                    else if ((flags & MoveFlags.BishopPromotion) != MoveFlags.None)
-                    {
-                        score += bishopScore;
+                        case MoveFlag.KnightPromotion:
+                            score += knightScore;
+                            break;
+                        case MoveFlag.BishopPromotion:
+                            score += bishopScore;
+                            break;
+                        case MoveFlag.RookPromotion:
+                            score += rookScore;
+                            break;
+                        case MoveFlag.QueenPromotion:
+                            score += queenScore;
+                            break;
                     }
                 }
                 else
@@ -280,7 +278,7 @@ namespace Chess
 
         public void OrderMoves(MoveList moves, bool isQuiescenceSearch)
         {
-            var hashMove = Move.Invalid;
+            var hashMove = Move.Null;
             if (!isQuiescenceSearch && TranspositionTable.TryGetValue(Board.ZobristKey, out var entry))
             {
                 hashMove = entry.Move;

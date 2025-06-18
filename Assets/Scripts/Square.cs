@@ -1,6 +1,5 @@
 ﻿using System;
 using Unity.Mathematics;
-using UnityEditor;
 
 namespace Chess
 {
@@ -155,7 +154,7 @@ namespace Chess
             return left.index > right.index;
         }
 
-        public static Square operator+(Square square, int shift)
+        public static Square operator +(Square square, int shift)
         {
             return new(square.Index + shift);
         }

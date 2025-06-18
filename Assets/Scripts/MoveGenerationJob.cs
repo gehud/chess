@@ -57,9 +57,14 @@ namespace Chess
             GeneratePawnMoves();
         }
 
-        private void AddMove(Square from, Square to, MoveFlags flags = MoveFlags.None)
+        private void AddMove(Square from, Square to)
         {
-            Moves.Add(new Move(from, to, flags));
+            Moves.Add(new Move(from, to));
+        }
+
+        private void AddMove(Square from, Square to, MoveFlag flag)
+        {
+            Moves.Add(new Move(from, to, flag));
         }
 
         private void Initialize()
@@ -169,7 +174,7 @@ namespace Chess
             for (var direction = startDirection; direction <= endDirection; direction++)
             {
                 var sliders = direction.IsDiagonal ? Board.EnemyDiagonalSliders : Board.EnemyOrthogonalSliders;
-                
+
                 if ((Board.GetRay(alliedKingSquare, direction) & sliders).IsEmpty)
                 {
                     continue;
@@ -234,7 +239,7 @@ namespace Chess
 
         private readonly bool IsPinningDirection(Direction direction, Figure figure)
         {
-            return figure == Figure.Queen 
+            return figure == Figure.Queen
                 || direction >= Direction.NorthWest
                 && figure == Figure.Bishop
                 || direction <= Direction.East
@@ -262,7 +267,7 @@ namespace Chess
                     if ((castleBlockers & castleMask).IsEmpty)
                     {
                         var targetSquare = isWhiteAllied ? Square.G1 : Square.G8;
-                        AddMove(alliedKingSquare, targetSquare, MoveFlags.Castling);
+                        AddMove(alliedKingSquare, targetSquare, MoveFlag.Castling);
                     }
                 }
 
@@ -274,7 +279,7 @@ namespace Chess
                     if ((castleMask & castleBlockers).IsEmpty && (castleBlockMask & Board.AllPiecesBitboard).IsEmpty)
                     {
                         var targetSquare = isWhiteAllied ? Square.C1 : Square.C8;
-                        AddMove(alliedKingSquare, targetSquare, MoveFlags.Castling);
+                        AddMove(alliedKingSquare, targetSquare, MoveFlag.Castling);
                     }
                 }
             }
@@ -399,7 +404,7 @@ namespace Chess
                     var startSquare = targetSquare - pushOffset * 2;
                     if (!IsPinned(startSquare) || Board.GetAlignMask(startSquare, alliedKingSquare) == Board.GetAlignMask(targetSquare, alliedKingSquare))
                     {
-                        AddMove(startSquare, targetSquare, MoveFlags.DoublePawnMove);
+                        AddMove(startSquare, targetSquare, MoveFlag.DoubleForwardPawn);
                     }
                 }
             }
@@ -477,7 +482,7 @@ namespace Chess
                         {
                             if (!IsInCheckAfterEnPassant(startSquare, targetSquare, capturedPawnSquare))
                             {
-                                AddMove(startSquare, targetSquare, MoveFlags.EnPassant);
+                                AddMove(startSquare, targetSquare, MoveFlag.EnPassant);
                             }
                         }
                     }
@@ -501,10 +506,10 @@ namespace Chess
 
         private void GeneratePromotions(Square from, Square to)
         {
-            AddMove(from, to, MoveFlags.QueenPromotion);
-            AddMove(from, to, MoveFlags.RookPromotion);
-            AddMove(from, to, MoveFlags.BishopPromotion);
-            AddMove(from, to, MoveFlags.KnightPromotion);
+            AddMove(from, to, MoveFlag.QueenPromotion);
+            AddMove(from, to, MoveFlag.RookPromotion);
+            AddMove(from, to, MoveFlag.BishopPromotion);
+            AddMove(from, to, MoveFlag.KnightPromotion);
         }
     }
 }

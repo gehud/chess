@@ -187,7 +187,7 @@ namespace Chess
             var builder = new StringBuilder();
 
             builder.AppendLine("  +---------------+");
-            
+
             for (var rank = Square.MaxComponent; rank >= Square.MinComponent; rank--)
             {
                 builder.Append((rank + 1) + " | ");

@@ -70,7 +70,7 @@ namespace Chess
 
         private void OnEnable()
         {
-            controls.Enable();   
+            controls.Enable();
         }
 
         private void OnDisable()
