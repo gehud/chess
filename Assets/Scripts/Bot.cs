@@ -11,6 +11,8 @@ namespace Chess
         public Move BestMove => bestMove.Value;
 
         private TranspositionTable transpositionTable;
+        private PieceSquareTables pieceSquareTables;
+        private MoveOrdering moveOrdering;
         private NativeReference<bool> isSearchCanceled;
         private NativeReference<Move> bestMove;
         private JobHandle searchJob;
@@ -18,6 +20,8 @@ namespace Chess
         public Bot(Allocator allocator)
         {
             transpositionTable = new(64, allocator);
+            pieceSquareTables = new(allocator);
+            moveOrdering = new MoveOrdering(allocator);
             isSearchCanceled = new(false, allocator);
             bestMove = new(default, allocator);
             searchJob = default;
@@ -32,6 +36,8 @@ namespace Chess
             {
                 Board = board,
                 TranspositionTable = transpositionTable,
+                PieceSquareTables = pieceSquareTables,
+                MoveOrdering = moveOrdering,
                 IsCanceled = isSearchCanceled,
                 BestMove = bestMove,
             };
@@ -49,6 +55,8 @@ namespace Chess
         public void Dispose()
         {
             transpositionTable.Dispose();
+            pieceSquareTables.Dispose();
+            moveOrdering.Dispose();
             isSearchCanceled.Dispose();
             bestMove.Dispose();
         }

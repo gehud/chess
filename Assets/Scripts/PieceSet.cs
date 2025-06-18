@@ -7,6 +7,8 @@ namespace Chess
     {
         public readonly int Length => length.Value;
 
+        public Square this[int index] => squares[index];
+
         private NativeArray<Square> squares;
         private NativeArray<int> map;
         private NativeReference<int> length;

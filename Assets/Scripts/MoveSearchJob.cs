@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -15,6 +14,9 @@ namespace Chess
         public Board Board;
         public TranspositionTable TranspositionTable;
         [ReadOnly, NativeDisableContainerSafetyRestriction]
+        public PieceSquareTables PieceSquareTables;
+        public MoveOrdering MoveOrdering;
+        [ReadOnly, NativeDisableContainerSafetyRestriction]
         public NativeReference<bool> IsCanceled;
         public NativeReference<Move> BestMove;
 
@@ -25,14 +27,6 @@ namespace Chess
         private const int positiveInfinity = 9999999;
         private const int negativeInfinity = -positiveInfinity;
         private const int immediateMateScore = 100000;
-        private const int squareControlledByOpponentPawnPenalty = 350;
-        private const int capturedPieceValueMultiplier = 10;
-        private const int pawnScore = 100;
-        private const int knightScore = 300;
-        private const int bishopScore = 330;
-        private const int rookScore = 500;
-        private const int queenScore = 900;
-        private const float endgameScore = rookScore * 2 + bishopScore + knightScore;
 
         public void Execute()
         {
@@ -129,7 +123,7 @@ namespace Chess
 
             var moves = new MoveList(Board, true, Allocator.TempJob, MoveList.Execution.Inline);
 
-            OrderMoves(moves, false);
+            MoveOrdering.OrderMoves(Board, TranspositionTable, moves, false);
             if (moves.Length == 0)
             {
                 moves.Dispose();
@@ -182,188 +176,40 @@ namespace Chess
 
         private int QuiescenceSearch(int alpha, int beta)
         {
-            var eval = Evaluate();
+            var score = Evaluation.Evaluate(Board, PieceSquareTables);
 
-            if (eval >= beta)
+            if (score >= beta)
             {
                 return beta;
             }
 
-            if (eval > alpha)
+            if (score > alpha)
             {
-                alpha = eval;
+                alpha = score;
             }
 
             var moves = new MoveList(Board, false, Allocator.TempJob, MoveList.Execution.Inline);
-            OrderMoves(moves, true);
+            MoveOrdering.OrderMoves(Board, TranspositionTable, moves, true);
 
             for (var i = 0; i < moves.Length; i++)
             {
                 Board.MakeMove(moves[i], true);
-                eval = -QuiescenceSearch(-beta, -alpha);
+                score = -QuiescenceSearch(-beta, -alpha);
                 Board.UnmakeMove(moves[i], true);
 
-                if (eval >= beta)
+                if (score >= beta)
                 {
                     moves.Dispose();
                     return beta;
                 }
-                if (eval > alpha)
+                if (score > alpha)
                 {
-                    alpha = eval;
+                    alpha = score;
                 }
             }
 
             moves.Dispose();
             return alpha;
-        }
-
-        private struct MoveComparer : IComparer<Move>
-        {
-            public Move HashMove;
-            public Board Board;
-            public MoveList Moves;
-
-            public int Compare(Move x, Move y)
-            {
-                return GetMoveScore(y) - GetMoveScore(x);
-            }
-
-            private int GetMoveScore(Move move)
-            {
-                var score = 0;
-                var moveFigure = Board[move.From].Figure;
-                var captureFigure = Board[move.To].Figure;
-                var flag = move.Flag;
-
-                if (captureFigure != Figure.None)
-                {
-                    score = capturedPieceValueMultiplier * GetFigureScore(captureFigure) - GetFigureScore(moveFigure);
-                }
-
-                if (moveFigure == Figure.Pawn)
-                {
-                    switch (flag)
-                    {
-                        case MoveFlag.KnightPromotion:
-                            score += knightScore;
-                            break;
-                        case MoveFlag.BishopPromotion:
-                            score += bishopScore;
-                            break;
-                        case MoveFlag.RookPromotion:
-                            score += rookScore;
-                            break;
-                        case MoveFlag.QueenPromotion:
-                            score += queenScore;
-                            break;
-                    }
-                }
-                else
-                {
-                    if (Moves.AttackSquares.Contains(move.To))
-                    {
-                        score -= squareControlledByOpponentPawnPenalty;
-                    }
-                }
-
-                if (move == HashMove)
-                {
-                    score += 10000;
-                }
-
-                return score;
-            }
-        }
-
-        public void OrderMoves(MoveList moves, bool isQuiescenceSearch)
-        {
-            var hashMove = Move.Null;
-            if (!isQuiescenceSearch && TranspositionTable.TryGetValue(Board.ZobristKey, out var entry))
-            {
-                hashMove = entry.Move;
-            }
-
-            moves.Items.Sort(new MoveComparer
-            {
-                Board = Board,
-                HashMove = hashMove,
-                Moves = moves,
-            });
-        }
-
-        private static int GetFigureScore(Figure figure)
-        {
-            return figure switch
-            {
-                Figure.Pawn => pawnScore,
-                Figure.Knight => knightScore,
-                Figure.Bishop => bishopScore,
-                Figure.Rook => rookScore,
-                Figure.Queen => queenScore,
-                _ => 0,
-            };
-        }
-
-        private int Evaluate()
-        {
-            var whiteEvaluation = 0;
-            var blackEvaluation = 0;
-
-            var whiteColor = Count(Color.White);
-            var blackColor = Count(Color.Black);
-
-            var whiteColorWithoutPawns = whiteColor - Board.Pawns[(int)Color.White].Length * pawnScore;
-            var blackColorWithoutPawns = blackColor - Board.Pawns[(int)Color.Black].Length * pawnScore;
-
-            var whiteEndgamePhaseWeight = EndgamePhaseWeight(whiteColorWithoutPawns);
-            var blackEndgamePhaseWeight = EndgamePhaseWeight(blackColorWithoutPawns);
-
-            whiteEvaluation += whiteColor;
-            blackEvaluation += blackColor;
-            whiteEvaluation += MopUpEvaluation(Color.White, Color.Black, blackEndgamePhaseWeight);
-            blackEvaluation += MopUpEvaluation(Color.Black, Color.White, whiteEndgamePhaseWeight);
-
-            int evaluation = whiteEvaluation - blackEvaluation;
-
-            var perspective = Board.IsWhiteAllied ? 1 : -1;
-            return evaluation * perspective;
-        }
-
-        private readonly float EndgamePhaseWeight(int colorWithoutPawns)
-        {
-            const float multiplier = 1f / endgameScore;
-            return 1f - math.min(1f, colorWithoutPawns * multiplier);
-        }
-
-        private int MopUpEvaluation(Color alliedColor, Color enemyColor, float endgameWeight)
-        {
-            var evaluation = 0;
-
-            var alliedKing = Board.Kings[(int)alliedColor];
-            var enemyKing = Board.Kings[(int)enemyColor];
-
-            var enemyKingCenterDistanceFile = math.max(3 - enemyKing.File, enemyKing.File - 4);
-            var enemyKingCenterDistanceRank = math.max(3 - enemyKing.Rank, enemyKing.Rank - 4);
-            var enemyKingCenterDistance = enemyKingCenterDistanceFile + enemyKingCenterDistanceRank;
-            evaluation += enemyKingCenterDistance;
-
-            var kingDistanceFile = math.abs(alliedKing.File - enemyKing.File);
-            var kingDistanceRank = math.abs(alliedKing.Rank - enemyKing.Rank);
-            var kingDistance = kingDistanceFile + kingDistanceRank;
-            evaluation += 14 - kingDistance;
-
-            return (int)(evaluation * 10 + endgameWeight);
-        }
-
-        private int Count(Color color)
-        {
-            return
-                Board.Pawns[(int)color].Length * pawnScore +
-                Board.Knights[(int)color].Length * knightScore +
-                Board.Bishops[(int)color].Length * bishopScore +
-                Board.Rooks[(int)color].Length * rookScore +
-                Board.Queens[(int)color].Length * queenScore;
         }
     }
 }

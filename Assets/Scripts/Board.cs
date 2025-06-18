@@ -70,6 +70,8 @@ namespace Chess
         public NativeArray<int> MoveLimits;
         public NativeArray<int> SquareOffsets;
         public NativeArray<int2> SquareOffsets2D;
+        public NativeArray<int> ManhattanDistance;
+        public NativeArray<int> CenterManhattanDistance;
 
         public NativeArray<Bitboard> DirectionRays;
         public NativeArray<Bitboard> AlignMask;
@@ -180,6 +182,27 @@ namespace Chess
             SquareOffsets2D[5] = new(1, -1);
             SquareOffsets2D[6] = new(1, 1);
             SquareOffsets2D[7] = new(-1, -1);
+
+            ManhattanDistance = new(Area * Area, allocator);
+            CenterManhattanDistance = new(Area, allocator);
+
+            for (var a = Square.MinIndex; a <= Square.MaxIndex; a++)
+            {
+                var squareA = new Square(a);
+                var coordinateA = squareA.Coordinate;
+                var centerDistanceFile = math.max(3 - coordinateA.x, coordinateA.x - 4);
+                var centerDistanceRank = math.max(3 - coordinateA.y, coordinateA.y - 4);
+                CenterManhattanDistance[a] = centerDistanceFile + centerDistanceRank;
+
+                for (var b = Square.MinIndex; b <= Square.MaxIndex; b++)
+                {
+                    var squareB = new Square(b);
+                    var coordinateB = squareB.Coordinate;
+                    var distanceFile = math.abs(coordinateA.x - coordinateB.x);
+                    var distanceRank = math.abs(coordinateA.y - coordinateB.y);
+                    ManhattanDistance[a * Area + b] = distanceFile + distanceRank;
+                }
+            }
 
             AllPieces = new(Piece.MaxIndex + 1, allocator);
 
@@ -625,6 +648,16 @@ namespace Chess
             }
         }
 
+        public int GetCenterManhattanDistance(Square square)
+        {
+            return CenterManhattanDistance[square.Index];
+        }
+
+        public int GetManhattanDistance(Square from, Square to)
+        {
+            return ManhattanDistance[from.Index * Area + to.Index];
+        }
+
         public static bool IsCoordinateValid(int file, int rank)
         {
             return file >= Square.MinComponent
@@ -897,6 +930,8 @@ namespace Chess
             MoveLimits.Dispose();
             SquareOffsets.Dispose();
             SquareOffsets2D.Dispose();
+            ManhattanDistance.Dispose();
+            CenterManhattanDistance.Dispose();
 
             RookDirections.Dispose();
             BishopDirections.Dispose();
