@@ -40,8 +40,8 @@ namespace Chess
         public MoveList(in Board board, bool quietMoves, Allocator allocator, Execution execution = Execution.Schedule)
         {
             moves = new(MaxMoves, allocator);
-            isInCheck = new(default, Allocator.TempJob);
-            attackSquares = new(default, Allocator.TempJob);
+            isInCheck = new(default, allocator);
+            attackSquares = new(default, allocator);
 
             var job = new MoveGenerationJob
             {
