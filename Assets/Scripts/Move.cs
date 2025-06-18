@@ -29,7 +29,7 @@ namespace Chess
             data = (ushort)((int)from | (int)to << 6 | (int)flag << 12);
         }
 
-        private string FormatFlags()
+        private string FormatFlag()
         {
             return Flag switch
             {
@@ -43,7 +43,7 @@ namespace Chess
 
         public override string ToString()
         {
-            return $"{From}{To}{FormatFlags()}";
+            return $"{From}{To}{FormatFlag()}";
         }
 
         public bool Equals(Move other)

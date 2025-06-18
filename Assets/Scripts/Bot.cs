@@ -6,7 +6,7 @@ namespace Chess
 {
     public struct Bot : IDisposable
     {
-        public bool IsSearchCompleted => searchJob != default && searchJob.IsCompleted;
+        public bool IsSearchCompleted => searchJob.IsCompleted;
 
         public Move BestMove => bestMove.Value;
 
@@ -42,12 +42,7 @@ namespace Chess
         public void StopSearch()
         {
             isSearchCanceled.Value = true;
-
-            if (searchJob != default)
-            {
-                searchJob.Complete();
-            }
-
+            searchJob.Complete();
             isSearchCanceled.Value = false;
         }
 
