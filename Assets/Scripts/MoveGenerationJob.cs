@@ -39,7 +39,7 @@ namespace Chess
         private Bitboard moveTypeMask;
         private Bitboard allPieces;
 
-        void IJob.Execute()
+        public void Execute()
         {
             Initialize();
 

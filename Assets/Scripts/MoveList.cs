@@ -34,7 +34,14 @@ namespace Chess
 
         private NativeReference<Data> data;
 
-        public MoveList(in Board board, bool quietMoves, Allocator allocator)
+        public enum Execution
+        {
+            Schedule,
+            Run,
+            Inline
+        }
+
+        public MoveList(in Board board, bool quietMoves, Allocator allocator, Execution execution = Execution.Schedule)
         {
             var moves = new NativeList<Move>(MaxMoves, allocator);
 
@@ -50,13 +57,28 @@ namespace Chess
                 AttackSquares = attackSquaresRef
             };
 
-            job.Schedule().Complete();
-
-            data = new(new Data
+            switch (execution)
             {
-                Moves = moves,
-                IsInCheck = isInCheckRef.Value,
-            }, allocator);
+                case Execution.Schedule:
+                    job.Schedule().Complete();
+                    break;
+                case Execution.Run:
+                    job.Run();
+                    break;
+                case Execution.Inline:
+                    job.Execute();
+                    break;
+            }
+
+            data = new
+            (
+                new Data
+                {
+                    Moves = moves,
+                    IsInCheck = isInCheckRef.Value,
+                },
+                allocator
+            );
 
             isInCheckRef.Dispose();
             attackSquaresRef.Dispose();

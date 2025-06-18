@@ -1,5 +1,5 @@
-﻿using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Collections;
+using Unity.Collections;
 using UnityEngine;
 
 namespace Chess
@@ -9,47 +9,46 @@ namespace Chess
         public delegate void SearchCompletedHandler(Move move);
         public static event SearchCompletedHandler SearchCompleted;
 
-        [SerializeField, Min(0)]
-        private int searchTime = 3000;
-
-        private CancellationTokenSource cancelSearchTimer;
+        [SerializeField, Min(0f)]
+        private float searchTime = 3;
 
         private Bot bot;
-        private Task searchTask;
 
         public void StartSearch(Board board)
         {
-            searchTask = Task.Factory.StartNew(() => bot.StartSearch(board), TaskCreationOptions.LongRunning);
-            cancelSearchTimer = new CancellationTokenSource();
-            Task.Delay(searchTime, cancelSearchTimer.Token).ContinueWith((t) => TimeOutThreadedSearch());
+            StartCoroutine(Timer(board));
         }
 
-        private void TimeOutThreadedSearch()
+        private IEnumerator Timer(Board board)
         {
-            if (!cancelSearchTimer.IsCancellationRequested)
+            bot.StartSearch(board);
+
+            var time = 0f;
+            while (time <= searchTime)
             {
-                bot.EndSearch();
+                if (bot.IsSearchCompleted)
+                {
+                    break;
+                }
+
+                time += Time.deltaTime;
+                yield return null;
             }
+
+            bot.StopSearch();
+            SearchCompleted?.Invoke(bot.BestMove);
         }
 
         private void Awake()
         {
-            bot = new();
-        }
-
-        private void Update()
-        {
-            if (searchTask != null && searchTask.IsCompleted)
-            {
-                cancelSearchTimer?.Cancel();
-                SearchCompleted?.Invoke(bot.BestMove);
-                searchTask = null;
-            }
+            bot = new(Allocator.Persistent);
         }
 
         private void OnDestroy()
         {
-            cancelSearchTimer.Cancel();
+            StopAllCoroutines();
+            bot.StopSearch();
+            bot.Dispose();
         }
     }
 }

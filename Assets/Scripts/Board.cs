@@ -2,6 +2,7 @@
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEngine;
 
 namespace Chess
 {
@@ -573,14 +574,6 @@ namespace Chess
             State = StateHistory[^1];
             PlyCount--;
             HasCachedInCheckValue = false;
-        }
-
-        public void UnmakeLastMove()
-        {
-            if (AllMoves.Length > 0)
-            {
-                UnmakeMove(AllMoves[^1]);
-            }
         }
 
         public void Load(string fen)

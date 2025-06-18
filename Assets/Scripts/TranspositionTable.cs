@@ -1,112 +1,59 @@
 ﻿using System;
+using Unity.Collections;
 using static System.Runtime.InteropServices.Marshal;
 
 namespace Chess
 {
-    public class TranspositionTable
+    public struct TranspositionTable : IDisposable
     {
         public const int LookupFailed = int.MinValue;
-
-        public enum EntryKind
-        {
-            Exact,
-            LowerBound,
-            UpperBound,
-        }
 
         public struct Entry
         {
             public static int Size => SizeOf<Entry>();
 
             public ulong Key;
+            public Transposition Transposition;
             public int Depth;
-            public int Value;
-            public EntryKind Kind;
+            public int Score;
             public Move Move;
         }
 
-        private readonly Entry[] entries;
+        private NativeHashMap<ulong, Entry> table;
 
-        public TranspositionTable(int sizeInMb)
+        public TranspositionTable(int sizeInMb, Allocator allocator)
         {
             var length = sizeInMb * 1024 * 1024 / Entry.Size;
-            entries = new Entry[length];
+            table = new(length, allocator);
         }
 
-        public Entry GetEntry(ulong key)
+        public bool TryGetValue(ulong key, out Entry entry)
         {
-            return entries[key % (ulong)entries.Length];
+            return table.TryGetValue(key, out entry);
         }
 
-        public int LookupEvaluation(ulong key, int depth, int plyFromRoot, int alpha, int beta)
-        {
-            var entry = entries[key % (ulong)entries.Length];
-
-            if (entry.Depth >= depth)
-            {
-                int correctedScore = CorrectRetrievedMateScore(entry.Value, plyFromRoot);
-
-                if (entry.Kind == EntryKind.Exact)
-                {
-                    return correctedScore;
-                }
-
-                if (entry.Kind == EntryKind.UpperBound && correctedScore <= alpha)
-                {
-                    return correctedScore;
-                }
-
-                if (entry.Kind == EntryKind.LowerBound && correctedScore >= beta)
-                {
-                    return correctedScore;
-                }
-            }
-
-            return LookupFailed;
-        }
-
-        public void StoreEvaluation(ulong key, int depth, int numPlySearched, int eval, EntryKind evalType, Move move)
+        public void Add(ulong key, int depth, int score, Transposition transposition, Move move)
         {
             var entry = new Entry
             {
                 Key = key,
-                Value = CorrectMateScoreForStorage(eval, numPlySearched),
                 Depth = depth,
-                Kind = evalType,
+                Score = score,
+                Transposition = transposition,
                 Move = move,
             };
 
-            entries[key % (ulong)entries.Length] = entry;
-        }
-
-        int CorrectMateScoreForStorage(int score, int numPlySearched)
-        {
-            if (Bot.IsMateScore(score))
-            {
-                int sign = Math.Sign(score);
-                return (score * sign + numPlySearched) * sign;
-            }
-
-            return score;
-        }
-
-        int CorrectRetrievedMateScore(int score, int numPlySearched)
-        {
-            if (Bot.IsMateScore(score))
-            {
-                int sign = Math.Sign(score);
-                return (score * sign - numPlySearched) * sign;
-            }
-
-            return score;
+            table[key] = entry;
         }
 
         public void Clear()
         {
-            for (var i = 0; i < entries.Length; i++)
-            {
-                entries[i] = default;
-            }
+            table.Clear();
+        }
+
+        public void Dispose()
+        {
+            table.Dispose();
         }
     }
 }

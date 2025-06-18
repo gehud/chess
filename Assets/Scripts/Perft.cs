@@ -64,7 +64,7 @@ namespace Chess
 
                 count += innerCount;
 
-                board.UnmakeLastMove();
+                board.UnmakeMove(move);
             }
 
             moves.Dispose();
