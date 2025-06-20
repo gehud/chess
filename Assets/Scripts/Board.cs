@@ -782,7 +782,7 @@ namespace Chess
             StateHistory.Add(State);
         }
 
-        private string GetFen()
+        public string GetFen(bool includeEnPassant = true)
         {
             var fen = string.Empty;
 
@@ -854,17 +854,17 @@ namespace Chess
             var blackKingside = (State.CastlingRights >> 2 & 1) == 1;
             var blackQueenside = (State.CastlingRights >> 3 & 1) == 1;
             fen += ' ';
-            fen += (whiteKingside) ? "K" : "";
-            fen += (whiteQueenside) ? "Q" : "";
-            fen += (blackKingside) ? "k" : "";
-            fen += (blackQueenside) ? "q" : "";
-            fen += ((State.CastlingRights) == 0) ? "-" : "";
+            fen += whiteKingside ? "K" : "";
+            fen += whiteQueenside ? "Q" : "";
+            fen += blackKingside ? "k" : "";
+            fen += blackQueenside ? "q" : "";
+            fen += (State.CastlingRights == 0) ? "-" : "";
 
             fen += ' ';
             var epFileIndex = State.EnPassantFile - 1;
             var epRankIndex = IsWhiteAllied ? 5 : 2;
 
-            var isEnPassant = epFileIndex != -1;
+            var isEnPassant = includeEnPassant && epFileIndex != -1;
             if (isEnPassant)
             {
                 fen += new Square(epFileIndex, epRankIndex).ToString();

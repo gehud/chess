@@ -26,6 +26,7 @@ namespace Chess
         private const int positiveInfinity = 9999999;
         private const int negativeInfinity = -positiveInfinity;
         private const int immediateMateScore = 100000;
+        private bool hasSearchedAtLeastOneMove;
 
         public void Execute()
         {
@@ -34,10 +35,16 @@ namespace Chess
 
             for (int searchDepth = 1; searchDepth <= maxSearchDepth; searchDepth++)
             {
+                hasSearchedAtLeastOneMove = false;
                 Search(searchDepth, 0, negativeInfinity, positiveInfinity);
 
                 if (IsCanceled.Value)
                 {
+                    if (hasSearchedAtLeastOneMove)
+                    {
+                        BestMove.Value = bestMoveThisIteration;
+                    }
+
                     break;
                 }
                 else
@@ -50,7 +57,8 @@ namespace Chess
             if (BestMove.Value.IsNull)
             {
                 var moves = new MoveList(Board, true, Allocator.TempJob, MoveList.Execution.Inline);
-                BestMove.Value = moves[0];
+                var random = new Random(404);
+                BestMove.Value = moves[random.NextInt(moves.Length)];
                 moves.Dispose();
             }
         }
@@ -112,7 +120,8 @@ namespace Chess
                     }
 
                     return entry.Score;
-                };
+                }
+                ;
             }
 
             if (depth == 0)
@@ -163,6 +172,7 @@ namespace Chess
                     if (plyFromRoot == 0)
                     {
                         bestMoveThisIteration = moves[i];
+                        hasSearchedAtLeastOneMove = true;
                     }
                 }
             }

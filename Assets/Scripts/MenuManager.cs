@@ -53,7 +53,7 @@ namespace Chess
 
         public void ShowWinner(Color color)
         {
-            OnGameOver();   
+            OnGameOver();
             switch (color)
             {
                 case Color.Black:
