@@ -828,7 +828,7 @@ namespace Chess
                                 break;
                         }
 
-                        fen += (isBlack) ? pieceChar.ToString().ToLower() : pieceChar.ToString();
+                        fen += isBlack ? pieceChar.ToString().ToLower() : pieceChar.ToString();
                     }
                     else
                     {

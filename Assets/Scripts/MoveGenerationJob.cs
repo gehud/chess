@@ -31,7 +31,8 @@ namespace Chess
         private Bitboard attackSquaresNoPawns;
         [NativeDisableContainerSafetyRestriction]
         public NativeReference<Bitboard> AttackSquares;
-        private Bitboard pawnAttackSquares;
+        [NativeDisableContainerSafetyRestriction]
+        public NativeReference<Bitboard> PawnAttackSquares;
 
         private Bitboard enemyPieces;
         private Bitboard alliedPieces;
@@ -112,8 +113,8 @@ namespace Chess
             }
 
             var enemyPawnBoard = Board.PieceBitboards[new Piece(Figure.Pawn, Board.EnemyColor).Index];
-            pawnAttackSquares = Board.GetPawnAttacks(enemyPawnBoard, !isWhiteAllied);
-            if (pawnAttackSquares.Contains(alliedKingSquare))
+            PawnAttackSquares.Value = Board.GetPawnAttacks(enemyPawnBoard, !isWhiteAllied);
+            if (PawnAttackSquares.Value.Contains(alliedKingSquare))
             {
                 MakeCheck();
                 var possiblePawnAttackOrigins = isWhiteAllied ? Board.WhitePawnAttacks[alliedKingSquare.Index] : Board.BlackPawnAttacks[alliedKingSquare.Index];
@@ -122,7 +123,7 @@ namespace Chess
             }
 
             attackSquaresNoPawns = slidingAttackSquares | knightAttackSquares | Board.KingMoves[enemyKingSquare.Index];
-            AttackSquares.Value = attackSquaresNoPawns | pawnAttackSquares;
+            AttackSquares.Value = attackSquaresNoPawns | PawnAttackSquares.Value;
 
             if (!IsInCheck.Value)
             {

@@ -14,6 +14,8 @@ namespace Chess
 
         public readonly Bitboard AttackSquares => attackSquares.Value;
 
+        public readonly Bitboard PawnAttackSquares => pawnAttackSquares.Value;
+
         public readonly NativeList<Move> Items => moves;
 
         public readonly int Length => moves.Length;
@@ -29,6 +31,7 @@ namespace Chess
         private NativeList<Move> moves;
         private NativeReference<bool> isInCheck;
         private NativeReference<Bitboard> attackSquares;
+        private NativeReference<Bitboard> pawnAttackSquares;
 
         public enum Execution
         {
@@ -42,6 +45,7 @@ namespace Chess
             moves = new(MaxMoves, allocator);
             isInCheck = new(default, allocator);
             attackSquares = new(default, allocator);
+            pawnAttackSquares = new(default, allocator);
 
             var job = new MoveGenerationJob
             {
@@ -49,7 +53,8 @@ namespace Chess
                 Moves = moves,
                 QuietMoves = quietMoves,
                 IsInCheck = isInCheck,
-                AttackSquares = attackSquares
+                AttackSquares = attackSquares,
+                PawnAttackSquares = pawnAttackSquares,
             };
 
             switch (execution)
@@ -71,6 +76,7 @@ namespace Chess
             moves.Dispose();
             isInCheck.Dispose();
             attackSquares.Dispose();
+            pawnAttackSquares.Dispose();
         }
 
         public IEnumerator<Move> GetEnumerator()

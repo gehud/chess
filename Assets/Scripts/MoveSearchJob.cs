@@ -21,7 +21,6 @@ namespace Chess
         public NativeReference<Move> BestMove;
 
         private Move bestMoveThisIteration;
-        private bool hasSearchedAtLeastOneMove;
 
         private const int maxSearchDepth = int.MaxValue;
         private const int positiveInfinity = 9999999;
@@ -35,16 +34,10 @@ namespace Chess
 
             for (int searchDepth = 1; searchDepth <= maxSearchDepth; searchDepth++)
             {
-                hasSearchedAtLeastOneMove = false;
                 Search(searchDepth, 0, negativeInfinity, positiveInfinity);
 
                 if (IsCanceled.Value)
                 {
-                    if (hasSearchedAtLeastOneMove)
-                    {
-                        BestMove.Value = bestMoveThisIteration;
-                    }
-
                     break;
                 }
                 else
@@ -60,6 +53,31 @@ namespace Chess
                 BestMove.Value = moves[0];
                 moves.Dispose();
             }
+        }
+
+        private bool TryLookupEvaluation(in TranspositionTable.Entry entry, int depth, int alpha, int beta)
+        {
+            if (entry.Depth < depth)
+            {
+                return false;
+            }
+
+            if (entry.Transposition == Transposition.Exact)
+            {
+                return true;
+            }
+
+            if (entry.Transposition == Transposition.UpperBound && entry.Score <= alpha)
+            {
+                return true;
+            }
+
+            if (entry.Transposition == Transposition.LowerBound && entry.Score >= alpha)
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private int Search(int depth, int plyFromRoot, int alpha, int beta)
@@ -86,34 +104,15 @@ namespace Chess
 
             if (TranspositionTable.TryGetValue(Board.ZobristKey, out var entry))
             {
-                if (entry.Depth >= depth)
+                if (TryLookupEvaluation(entry, depth, alpha, beta))
                 {
-                    if (entry.Transposition == Transposition.Exact)
+                    if (plyFromRoot == 0)
                     {
-                        return entry.Score;
+                        bestMoveThisIteration = entry.Move;
                     }
 
-                    if (entry.Transposition == Transposition.LowerBound)
-                    {
-                        alpha = math.max(alpha, entry.Score);
-                    }
-                    else if (entry.Transposition == Transposition.UpperBound)
-                    {
-                        beta = math.max(beta, entry.Score);
-                    }
-
-                    if (alpha >= beta)
-                    {
-                        return entry.Score;
-                    }
-                }
-
-                if (plyFromRoot == 0)
-                {
-                    bestMoveThisIteration = entry.Move;
-                }
-
-                return entry.Score;
+                    return entry.Score;
+                };
             }
 
             if (depth == 0)
@@ -131,7 +130,7 @@ namespace Chess
                 if (moves.IsInCheck)
                 {
                     var mateScore = immediateMateScore - plyFromRoot;
-                    return mateScore;
+                    return -mateScore;
                 }
                 else
                 {

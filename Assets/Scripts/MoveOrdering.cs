@@ -56,7 +56,7 @@ namespace Chess
                 }
                 else
                 {
-                    if (moves.AttackSquares.Contains(move.To))
+                    if (moves.PawnAttackSquares.Contains(move.To))
                     {
                         score -= squareControlledByOpponentPawnPenalty;
                     }
