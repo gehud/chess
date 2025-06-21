@@ -1,6 +1,5 @@
 ﻿using System;
 using Unity.Collections;
-using static System.Runtime.InteropServices.Marshal;
 
 namespace Chess
 {
@@ -8,8 +7,6 @@ namespace Chess
     {
         public struct Entry
         {
-            public static int Size => SizeOf<Entry>();
-
             public ulong Key;
             public Transposition Transposition;
             public int Depth;
