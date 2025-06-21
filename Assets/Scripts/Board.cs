@@ -80,6 +80,9 @@ namespace Chess
         public NativeArray<Bitboard> KingMoves;
         public NativeArray<Bitboard> WhitePawnAttacks;
         public NativeArray<Bitboard> BlackPawnAttacks;
+        public NativeArray<Bitboard> WhitePassedPawnMask;
+        public NativeArray<Bitboard> BlackPassedPawnMask;
+        public NativeArray<Bitboard> AdjacentFileMasks;
 
         public NativeArray<int2> RookDirections;
         public NativeArray<int2> BishopDirections;
@@ -279,6 +282,33 @@ namespace Chess
             KingMoves = new(Area, allocator);
             WhitePawnAttacks = new(Area, allocator);
             BlackPawnAttacks = new(Area, allocator);
+
+            WhitePassedPawnMask = new(Area, allocator);
+            BlackPassedPawnMask = new(Area, allocator);
+
+            for (var i = Square.MinIndex; i <= Square.MaxIndex; i++)
+            {
+                var square = new Square(i);
+                var file = square.File;
+                var rank = square.Rank;
+
+                var adjacentFiles = Bitboard.FileA << math.max(0, file - 1) | Bitboard.FileA << math.min(7, file + 1);
+
+                var whiteForwardMask = (Bitboard)~(ulong.MaxValue >> (64 - 8 * (rank + 1)));
+                var blackForwardMask = (Bitboard)((1ul << 8 * rank) - 1);
+
+                WhitePassedPawnMask[i] = (Bitboard.FileA << file | adjacentFiles) & whiteForwardMask;
+                BlackPassedPawnMask[i] = (Bitboard.FileA << file | adjacentFiles) & blackForwardMask;
+            }
+
+            AdjacentFileMasks = new(Size, allocator);
+
+            for (var i = 0; i < Size; i++)
+            {
+                var left = i > 0 ? Bitboard.FileA << (i - 1) : Bitboard.Empty;
+                var right = i < 7 ? Bitboard.FileA << (i + 1) : Bitboard.Empty;
+                AdjacentFileMasks[i] = left | right;
+            }
 
             HasCachedInCheckValue = default;
 
@@ -926,6 +956,10 @@ namespace Chess
             KingMoves.Dispose();
             WhitePawnAttacks.Dispose();
             BlackPawnAttacks.Dispose();
+            WhitePassedPawnMask.Dispose();
+            BlackPassedPawnMask.Dispose();
+
+            AdjacentFileMasks.Dispose();
 
             MoveLimits.Dispose();
             SquareOffsets.Dispose();

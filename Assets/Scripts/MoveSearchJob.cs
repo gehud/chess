@@ -15,6 +15,7 @@ namespace Chess
         public TranspositionTable TranspositionTable;
         [ReadOnly, NativeDisableContainerSafetyRestriction]
         public PieceSquareTables PieceSquareTables;
+        public Evaluation Evaluation;
         public MoveOrdering MoveOrdering;
         [ReadOnly, NativeDisableContainerSafetyRestriction]
         public NativeReference<bool> IsCanceled;

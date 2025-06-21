@@ -12,8 +12,9 @@ namespace Chess
 
         private TranspositionTable transpositionTable;
         private PieceSquareTables pieceSquareTables;
+        private Evaluation evaluation;
         private MoveOrdering moveOrdering;
-        private OpeningBook openingBook;
+        private readonly OpeningBook openingBook;
         private NativeReference<bool> isSearchCanceled;
         private NativeReference<Move> bestMove;
         private JobHandle searchJob;
@@ -26,6 +27,7 @@ namespace Chess
         {
             transpositionTable = new(allocator);
             pieceSquareTables = new(allocator);
+            evaluation = new(allocator);
             moveOrdering = new(allocator);
             openingBook = new();
             isSearchCanceled = new(false, allocator);
@@ -52,6 +54,7 @@ namespace Chess
                     Board = board,
                     TranspositionTable = transpositionTable,
                     PieceSquareTables = pieceSquareTables,
+                    Evaluation = evaluation,
                     MoveOrdering = moveOrdering,
                     IsCanceled = isSearchCanceled,
                     BestMove = bestMove,
@@ -87,6 +90,7 @@ namespace Chess
         {
             transpositionTable.Dispose();
             pieceSquareTables.Dispose();
+            evaluation.Dispose();
             moveOrdering.Dispose();
             isSearchCanceled.Dispose();
             bestMove.Dispose();
