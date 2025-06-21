@@ -6,8 +6,6 @@ namespace Chess
 {
     public struct TranspositionTable : IDisposable
     {
-        public const int LookupFailed = int.MinValue;
-
         public struct Entry
         {
             public static int Size => SizeOf<Entry>();
@@ -21,10 +19,9 @@ namespace Chess
 
         private NativeHashMap<ulong, Entry> table;
 
-        public TranspositionTable(int sizeInMb, Allocator allocator)
+        public TranspositionTable(Allocator allocator)
         {
-            var length = sizeInMb * 1024 * 1024 / Entry.Size;
-            table = new(length, allocator);
+            table = new(0, allocator);
         }
 
         public bool TryGetValue(ulong key, out Entry entry)

@@ -1,7 +1,6 @@
 ﻿using System;
 using Unity.Collections;
 using Unity.Jobs;
-using UnityEngine;
 
 namespace Chess
 {
@@ -25,7 +24,7 @@ namespace Chess
 
         public Bot(Allocator allocator)
         {
-            transpositionTable = new(64, allocator);
+            transpositionTable = new(allocator);
             pieceSquareTables = new(allocator);
             moveOrdering = new(allocator);
             openingBook = new();
